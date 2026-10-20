@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GUARDIÃO X - ISCA V2.78</title>
+<style>
+:root{--bg:#070a14;--green:#00ff88;--text:#fff;--muted:#d1d5db;--red:#ef4444;--card:#111827;--border:#374151}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center}
+.box{background:var(--card);border:2px solid var(--green);border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 0 25px rgba(0,255,136,0.2)}
+h2{color:var(--green);font-size:15px;margin-bottom:8px;font-weight:900}
+p{font-size:12px;line-height:1.5;margin-bottom:10px}
+.status{font-size:11px;color:var(--muted);margin-bottom:10px}
+.coord{font-family:monospace;font-size:11px;color:#facc15;background:#1f2937;padding:10px;border-radius:8px;border:1px solid var(--border);word-break:break-all}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-bottom:8px}
+.dot.off{background:#374151}.dot.on{background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-weight:900;font-size:12px;cursor:pointer;margin-top:8px}
+.btn.on{background:var(--green);color:#000}.btn.off{background:var(--red);color:#fff}.btn.gray{background:#374151;color:#fff}
+</style>
+</head>
+<body>
+
+<div class="box" id="telaConsentimento">
+  <h2>🛡️ SOLICITAÇÃO DE LOCALIZAÇÃO</h2>
+  <p>O operador da central solicitou rastreamento do dispositivo:</p>
+  <p><b id="txtVeiculo" style="color:var(--green);font-size:14px"></b></p>
+  <p style="font-size:11px;color:var(--muted)">Ao autorizar, você concorda em compartilhar seu GPS ao vivo com a central do Guardião X para fins de segurança. Você pode encerrar a qualquer momento fechando esta página.</p>
+  <button class="btn on" onclick="darConsentimento()">✅ EU AUTORIZO COMPARTILHAR MINHA LOCALIZAÇÃO</button>
+  <button class="btn gray" onclick="negar()">❌ NÃO AUTORIZO</button>
+  <div style="font-size:9px;color:#6b7280;margin-top:10px">Protegido por consentimento explícito - LGPD</div>
+</div>
+
+<div class="box" id="telaRastreio" style="display:none">
+  <div><span id="dot" class="dot off"></span></div>
+  <h2>🎯 RASTREAMENTO ATIVO</h2>
+  <div class="status" id="txtStatus">Pronto para ativar.</div>
+  <div class="coord" id="txtCoord">Aguardando...</div>
+  <button id="btnToggle" class="btn on" onclick="toggle()">🔴 ATIVAR RASTREAMENTO</button>
+  <div style="font-size:10px;color:#9ca3af;margin-top:10px">Mantenha esta página aberta após ATIVAR.</div>
+</div>
+
+<div class="box" id="telaNegado" style="display:none">
+  <h2>❌ NÃO AUTORIZADO</h2>
+  <p>Rastreamento não iniciado. Você pode fechar esta página.</p>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const canal = params.get('c') || params.get('canal') || 'guardiao-alan-2026';
+const veiculoId = params.get('v') || params.get('veiculo') || 'CELULAR-AVULSO';
+document.getElementById('txtVeiculo').textContent = veiculoId;
+
+const txtStatus=document.getElementById('txtStatus'), txtCoord=document.getElementById('txtCoord'), dot=document.getElementById('dot'), btn=document.getElementById('btnToggle');
+let watchId=null, ativo=false;
+
+function darConsentimento(){
+  document.getElementById('telaConsentimento').style.display='none';
+  document.getElementById('telaRastreio').style.display='block';
+}
+function negar(){
+  document.getElementById('telaConsentimento').style.display='none';
+  document.getElementById('telaNegado').style.display='block';
+}
+function toggle(){ if(!ativo) ativar(); else desativar(); }
+function ativar(){
+  if(!('geolocation' in navigator)){ txtStatus.textContent='GPS não suportado'; return; }
+  ativo=true; dot.className='dot on'; btn.className='btn off'; btn.textContent='🟢 DESATIVAR'; txtStatus.innerHTML='📡 Buscando satélites... Permita o GPS';
+  watchId=navigator.geolocation.watchPosition(enviar, erro, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+}
+function desativar(){
+  ativo=false; if(watchId!==null) navigator.geolocation.clearWatch(watchId); watchId=null;
+  dot.className='dot off'; btn.className='btn on'; btn.textContent='🔴 ATIVAR RASTREAMENTO';
+  txtStatus.innerHTML='⏸️ Desativado.'; txtCoord.innerHTML='Parado.';
+}
+function enviar(pos){
+  const data={id:veiculoId, lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy, time:new Date().toLocaleTimeString('pt-BR')};
+  fetch(`https://ntfy.sh/${canal}`, {method:'POST', body: JSON.stringify(data)});
+  txtStatus.innerHTML=`🟢 <b>ENVIANDO AO VIVO - ${veiculoId}</b><br>Deixe esta tela aberta!`;
+  txtCoord.innerHTML=`LAT: ${data.lat.toFixed(6)}<br>LNG: ${data.lng.toFixed(6)}<br>Prec: ${data.acc.toFixed(0)}m<br>${data.time}`;
+}
+function erro(e){ txtStatus.innerHTML=`❌ Erro GPS: ${e.message}`; desativar(); }
+</script>
+</body>
+</html>
