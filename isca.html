@@ -3,73 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guardião X - Autorização</title>
+<title>Guardião X</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
-body{background:#070a14;color:white;font-family:Arial;text-align:center;padding:30px 15px}
-.box{background:#111827;border:2px solid #2563eb;border-radius:20px;padding:25px;max-width:380px;margin:0 auto}
-button{width:100%;padding:16px;border-radius:12px;border:0;font-size:18px;font-weight:bold;margin-top:15px}
-#btnAuth{background:#2563eb;color:white}
-#btnStart{background:#16a34a;color:white;display:none}
-#btnStop{background:#dc2626;color:white;display:none}
-.check{ text-align:left; background:#1f2937; padding:12px; border-radius:10px; margin-top:15px; font-size:14px}
+body{margin:0;background:#070a14;color:#fff;font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#111827;border:2px solid #1d4ed8;border-radius:20px;padding:24px;width:90%;max-width:360px;text-align:center}
+button{width:100%;padding:16px;border-radius:12px;border:0;font-weight:bold;font-size:18px;margin-top:12px}
+#btnA{background:#2563eb;color:#fff}
+#btnOn{background:#16a34a;color:#fff;display:none}
+#btnOff{background:#dc2626;color:#fff;display:none}
+.box{text-align:left;background:#1f2937;padding:12px;border-radius:10px;margin-top:14px;font-size:14px}
 </style>
 </head>
 <body>
-<div class="box">
+<div class="card">
 <h2>🛡️ Guardião X</h2>
-<p id="titulo">Solicitação de localização para: <b id="vNome">MOTO</b></p>
-
-<div class="check">
-<label><input type="checkbox" id="chk"> Eu <b>autorizo</b> o compartilhamento da minha localização para fins de segurança e rastreamento do veículo.</label>
+<p id="txt">Solicitação de localização para:<br><b id="v">MOTO</b></p>
+<div class="box"><label><input type="checkbox" id="chk"> Eu <b>autorizo</b> o compartilhamento da minha localização para segurança e rastreamento.</label></div>
+<button id="btnA" onclick="autoriza()">EU AUTORIZO</button>
+<button id="btnOn" onclick="liga()">ATIVAR RASTREAMENTO</button>
+<button id="btnOff" onclick="desliga()">DESATIVAR RASTREAMENTO</button>
+<p id="st" style="margin-top:14px;color:#9ca3af">Aguardando autorização...</p>
 </div>
-
-<button id="btnAuth" onclick="autorizar()">EU AUTORIZO</button>
-<button id="btnStart" onclick="iniciar()">ATIVAR RASTREAMENTO</button>
-<button id="btnStop" onclick="parar()">DESATIVAR RASTREAMENTO</button>
-
-<p id="status" style="margin-top:15px;color:#9ca3af">Aguardando autorização...</p>
-</div>
-
 <script>
-const firebaseConfig={apiKey:"AIzaSyBi-kFZpp8C1PicxzimfImnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
-firebase.initializeApp(firebaseConfig);
+const cfg={apiKey:"AIzaSyBi-kFZpp8C1PicxzimfImnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
+firebase.initializeApp(cfg);
 const db=firebase.database();
-const params=new URLSearchParams(window.location.search);
-const canal=params.get('c')||'guardiao-YW5vbg-42359';
-const veiculo=params.get('v')||'MOTO';
-document.getElementById('vNome').innerText=veiculo;
-let watchId=null;
-
-function autorizar(){
- if(!document.getElementById('chk').checked){ alert('Você precisa marcar que autoriza!'); return; }
- document.getElementById('status').innerText='✅ Autorizado com sucesso!';
- document.getElementById('btnAuth').style.display='none';
- document.getElementById('btnStart').style.display='block';
+const qs=new URLSearchParams(location.search);
+const canal=qs.get('c')||'guardiao-YW5vbg-42359';
+const veic=qs.get('v')||'MOTO';
+document.getElementById('v').innerText=veic;
+let wid=null;
+function autoriza(){
+ if(!document.getElementById('chk').checked){alert('Marque a autorização');return}
+ document.getElementById('st').innerText='✅ Autorizado!';
+ document.getElementById('btnA').style.display='none';
+ document.getElementById('btnOn').style.display='block';
 }
-
-function iniciar(){
- document.getElementById('status').innerText='📡 Ativando rastreamento de '+veiculo+'...';
- if(navigator.geolocation){
-   watchId=navigator.geolocation.watchPosition(pos=>{
-     db.ref('dispositivos/'+canal+'/'+veiculo).set({
-       id:veiculo, lat:pos.coords.latitude, lng:pos.coords.longitude,
-       data:new Date().toLocaleString('pt-BR'), acc:pos.coords.accuracy, autorizado:true
-     });
-     document.getElementById('status').innerHTML='✅ <b>RASTREAMENTO ATIVO</b><br>'+veiculo+' enviando ao vivo<br>Prec: '+Math.round(pos.coords.accuracy)+'m';
-     document.getElementById('btnStart').style.display='none';
-     document.getElementById('btnStop').style.display='block';
-   }, err=>{ document.getElementById('status').innerText='❌ Ative o GPS e clique em Permitir'; }, {enableHighAccuracy:true});
- } else { document.getElementById('status').innerText='GPS não suportado'; }
+function liga(){
+ document.getElementById('st').innerText='📡 Ativando...';
+ wid=navigator.geolocation.watchPosition(p=>{
+   db.ref('dispositivos/'+canal+'/'+veic).set({id:veic,lat:p.coords.latitude,lng:p.coords.longitude,autorizado:true,data:new Date().toLocaleString('pt-BR'),acc:p.coords.accuracy});
+   document.getElementById('st').innerHTML='✅ <b>RASTREAMENTO ATIVO</b><br>'+veic+'<br>Prec: '+Math.round(p.coords.accuracy)+'m';
+   document.getElementById('btnOn').style.display='none';
+   document.getElementById('btnOff').style.display='block';
+ },e=>{document.getElementById('st').innerText='❌ Ative o GPS e clique em Permitir';},{enableHighAccuracy:true});
 }
-
-function parar(){
- if(watchId!==null) navigator.geolocation.clearWatch(watchId);
- db.ref('dispositivos/'+canal+'/'+veiculo).remove();
- document.getElementById('status').innerText='🛑 Rastreamento desativado';
- document.getElementById('btnStop').style.display='none';
- document.getElementById('btnAuth').style.display='block';
+function desliga(){
+ if(wid!==null) navigator.geolocation.clearWatch(wid);
+ db.ref('dispositivos/'+canal+'/'+veic).remove();
+ document.getElementById('st').innerText='🛑 Rastreamento desativado';
+ document.getElementById('btnOff').style.display='none';
+ document.getElementById('btnA').style.display='block';
  document.getElementById('chk').checked=false;
 }
 </script>
