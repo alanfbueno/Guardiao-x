@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guardião X</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+body{margin:0;background:#070a14;color:#fff;font-family:Arial;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#111827;border:2px solid #1d4ed8;border-radius:20px;padding:24px;width:90%;max-width:360px;text-align:center;box-shadow:0 0 30px rgba(37,99,235,0.3)}
+button{width:100%;padding:16px;border-radius:12px;border:0;font-weight:bold;font-size:18px;margin-top:12px;cursor:pointer}
+#btnA{background:#2563eb;color:#fff}
+#btnOn{background:#16a34a;color:#fff;display:none}
+#btnOff{background:#dc2626;color:#fff;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>🛡️ Guardião X</h2>
+<p>Solicitação de localização para:<br><b id="v">MOTO</b></p>
+<p style="font-size:13px;color:#9ca3af">Ao autorizar você permite o compartilhamento da sua localização para segurança.</p>
+<button id="btnA" onclick="autoriza()">EU AUTORIZO</button>
+<button id="btnOn" onclick="liga()">ATIVAR RASTREAMENTO</button>
+<button id="btnOff" onclick="desliga()">DESATIVAR RASTREAMENTO</button>
+<p id="st" style="margin-top:14px;color:#9ca3af">Aguardando autorização...</p>
+</div>
+<script>
+const cfg={apiKey:"AIzaSyBi-kFZpp8C1PicxzimfImnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
+firebase.initializeApp(cfg);
+const db=firebase.database();
+const qs=new URLSearchParams(location.search);
+const canal=qs.get('c')||'guardiao-YW5vbg-42359';
+const veic=qs.get('v')||'MOTO';
+document.getElementById('v').innerText=veic;
+
+let wid=null;
+const getRef = () => db.ref('dispositivos/'+canal+'/'+veic);
+
+function apagaDoMapa(){
+  try{ getRef().remove(); getRef().onDisconnect().cancel(); }catch(e){}
+}
+
+function autoriza(){
+ document.getElementById('st').innerText='✅ Autorizado!';
+ document.getElementById('btnA').style.display='none';
+ document.getElementById('btnOn').style.display='block';
+}
+
+function liga(){
+ document.getElementById('st').innerText='📡 Ativando...';
+ const ref = getRef();
+ ref.onDisconnect().remove();
+ window.addEventListener('beforeunload', apagaDoMapa);
+ window.addEventListener('pagehide', apagaDoMapa);
+
+ wid=navigator
