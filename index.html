@@ -3,9 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GUARDIÃO X - V2.78.1 PRODUÇÃO</title>
+<title>GUARDIÃO X - FIREBASE PROD</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- FIREBASE SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
 :root{--bg:#070a14;--card:#111827;--input:#1f2937;--border:#374151;--primary:#2563eb;--green:#00ff88;--red:#ef4444;--yellow:#facc15;--text:#ffffff;--muted:#d1d5db}
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
@@ -79,7 +82,6 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 </head>
 <body>
 
-<!-- MODAL DE TELA CHEIA DO DRONE (VERTICAL) -->
 <div id="modalDroneFullscreen" style="position:fixed;inset:0;background:#070a14;z-index:999999;display:none;flex-direction:column">
   <div style="background:#0b0f19;border-bottom:2px solid var(--primary);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:1000000">
     <h3 style="color:var(--primary);font-size:14px;font-weight:900">🛸 TELA TÁTICA DO DRONE (VERTICAL)</h3>
@@ -96,7 +98,6 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
   </div>
 </div>
 
-<!-- MODAL DO GRAVADOR AO VIVO (OTIMIZADO PARA NÃO ESTOURAR LOCALSTORAGE) -->
 <div id="modalGravadorApp" style="position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px">
   <div class="gravador-box" style="background:#111827;border:2px solid var(--primary);border-radius:16px;padding:20px;width:100%;max-width:360px;text-align:center">
     <h3 style="color:#fff;font-size:14px;margin-bottom:10px" id="tituloGravadorApp">GRAVAÇÃO BIOMÉTRICA</h3>
@@ -115,7 +116,7 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 <div id="telaLogin" style="display:flex;">
   <div class="login-box">
     <h1>GUARDIÃO X</h1>
-    <div class="sub">AUTENTICAÇÃO DE OPERADOR</div>
+    <div class="sub">FIREBASE REALTIME DATABASE</div>
     
     <div id="formLogin">
       <input id="email" type="email" placeholder="E-mail de acesso">
@@ -150,7 +151,7 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 <div id="app" style="display:none">
 <div id="topHeader">
   <div class="left">
-    <span>GUARDIÃO X - V2.78.1</span>
+    <span>GUARDIÃO X - FIREBASE</span>
     <button class="btn-logout-discreto" onclick="fazerLogout()">Sair</button>
   </div>
   <div class="right">
@@ -213,7 +214,6 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 
       <button class="btn-direct" onclick="treinar()" style="width:100%;padding:12px;font-size:11px;font-weight:900;margin-bottom:8px">➕ ADICIONAR VEÍCULO À FROTA</button>
 
-      <!-- SEÇÃO DE COMPARAÇÃO FORENSE -->
       <div style="background:#161e31;border:1px solid #60a5fa;border-radius:8px;padding:8px">
         <h4 style="color:#60a5fa;font-size:10px;margin-bottom:4px">🔍 COMPARAÇÃO BIOMÉTRICA FORENSE (ANTI-CLONAGEM)</h4>
         <label class="label">Veículo da Frota:</label>
@@ -349,17 +349,29 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 </div></div>
 
 <script>
+// CONFIGURAÇÃO DO FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyBi-kFZpp8C1PicxzimfImnwkClD_DbnwY",
+  authDomain: "guardiao-d.firebaseapp.com",
+  databaseURL: "https://guardiao-d-default-rtdb.firebaseio.com",
+  projectId: "guardiao-d",
+  storageBucket: "guardiao-d.firebasestorage.app",
+  messagingSenderId: "185879532988",
+  appId: "1:185879532988:web:6ceec9346b1934eb88c7b9"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 function getCanalPrivado(){
   let email = localStorage.getItem('guardiao_email') || document.getElementById('email')?.value || 'anon';
   let hash = btoa(email).replace(/[^a-zA-Z0-9]/g,'').substring(0,8);
   let saved = localStorage.getItem('guardiao_canal');
   if(saved) return saved;
-  let novo = `guardiao-${hash}-${Date.now().toString().slice(-5)}`;
+  let novo = `guardiao_${hash}`;
   localStorage.setItem('guardiao_canal', novo);
   return novo;
 }
 let MEU_CANAL = getCanalPrivado();
-let NTFY_URL = `https://ntfy.sh/${MEU_CANAL}/json`;
 
 let map = null, mapDrone = null, mapDroneFull = null, centralMarker = null, cercaCirculo = null, tileLayerAtual = null;
 let markerDroneNoMapa = null, markerDroneFull = null;
@@ -477,14 +489,13 @@ function entrarSistema(){
   let e = document.getElementById('email').value.trim().toLowerCase();
   if(e) localStorage.setItem('guardiao_email', e);
   MEU_CANAL = getCanalPrivado();
-  NTFY_URL = `https://ntfy.sh/${MEU_CANAL}/json`;
 
   document.getElementById('telaLogin').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   setTimeout(()=>{ 
     initMap(true); 
     iniciarRastreamentoCentralMovel();
-    iniciarEscutaNuvem();
+    iniciarEscutaFirebase();
     renderVeh();
     renderDispositivos();
   }, 300);
@@ -591,49 +602,50 @@ function iniciarRastreamentoCentralMovel(){
       if(cercaCirculo) cercaCirculo.setLatLng([centroCercaLat, centroCercaLng]);
     }
 
-    document.getElementById('footerCoord').innerText = `MEU GPS: ${meuCelularLat.toFixed(5)}, ${meuCelularLng.toFixed(5)} | CANAL: ${MEU_CANAL}`;
+    document.getElementById('footerCoord').innerText = `MEU GPS: ${meuCelularLat.toFixed(5)}, ${meuCelularLng.toFixed(5)} | DB: FIREBASE`;
   }, err => {
     console.log("Erro GPS central", err);
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
 }
 
-function iniciarEscutaNuvem(){
-  const eventSource = new EventSource(NTFY_URL);
-  eventSource.onmessage = (e) => {
-    try{
-      const data = JSON.parse(e.data);
-      if(!data.message) return;
-      const pos = JSON.parse(data.message);
-      
-      const lat = pos.lat, lng = pos.lng;
-      const id = pos.id || 'VEICULO-01';
-      
-      if(!markersMovel[id]){
-        markersMovel[id] = L.marker([lat, lng], {
-          icon: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-          })
-        }).addTo(map)
-          .bindTooltip(`<b>🚗 ${id}</b>`, { permanent: true, direction: 'top', offset: [0, -35] })
-          .bindPopup(`<b>🚗 Veículo: ${id}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
-      } else {
-        markersMovel[id].setLatLng([lat, lng]);
-        markersMovel[id].setTooltipContent(`<b>🚗 ${id}</b>`);
-        markersMovel[id].bindPopup(`<b>🚗 Veículo: ${id}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
-      }
+// ESCUTA EM TEMPO REAL NO FIREBASE
+function iniciarEscutaFirebase(){
+  const refDispositivos = db.ref(`dispositivos/${MEU_CANAL}`);
+  refDispositivos.on('child_added', snapshot => processarDadoFirebase(snapshot.val()));
+  refDispositivos.on('child_changed', snapshot => processarDadoFirebase(snapshot.val()));
+}
 
-      if(cercaArmada){
-        const distanciaMetros = map.distance([centroCercaLat, centroCercaLng], [lat, lng]);
-        if(distanciaMetros > raioMetros){
-          dispararSireneEmergencia(`⚠️ ALERTA: O dispositivo [${id}] rompeu a cerca virtual! Distância: ${distanciaMetros.toFixed(1)}m`);
-        }
-      }
+function processarDadoFirebase(pos){
+  try{
+    if(!pos || !pos.lat || !pos.lng) return;
+    const lat = pos.lat, lng = pos.lng;
+    const id = pos.id || 'VEICULO-01';
+    
+    if(!markersMovel[id]){
+      markersMovel[id] = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        })
+      }).addTo(map)
+        .bindTooltip(`<b>🚗 ${id}</b>`, { permanent: true, direction: 'top', offset: [0, -35] })
+        .bindPopup(`<b>🚗 Veículo: ${id}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
+    } else {
+      markersMovel[id].setLatLng([lat, lng]);
+      markersMovel[id].setTooltipContent(`<b>🚗 ${id}</b>`);
+      markersMovel[id].bindPopup(`<b>🚗 Veículo: ${id}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}`);
+    }
 
-      atualizarSelectAlvoDrone();
-    }catch(err){ console.log('Erro nuvem', err); }
-  };
+    if(cercaArmada){
+      const distanciaMetros = map.distance([centroCercaLat, centroCercaLng], [lat, lng]);
+      if(distanciaMetros > raioMetros){
+        dispararSireneEmergencia(`⚠️ ALERTA: O dispositivo [${id}] rompeu a cerca virtual! Distância: ${distanciaMetros.toFixed(1)}m`);
+      }
+    }
+
+    atualizarSelectAlvoDrone();
+  }catch(err){ console.log('Erro Firebase', err); }
 }
 
 function atualizarSelectAlvoDrone(){
@@ -731,10 +743,7 @@ function acionarDisparoGravacao(){
 
   mediaRecorder.onstop = () => {
     if(timerGravacao){ clearInterval(timerGravacao); timerGravacao = null; }
-    
-    // OTIMIZAÇÃO: SALVA APENAS O STATUS E DURAÇÃO (EVITA ESTOURO DE 5MB DO LOCALSTORAGE)
     bioTemp[tipoVideoAtual+'Url'] = `SALVO (${segundosGravados}s)`;
-    
     if(tipoVideoAtual === 'dia'){
       document.getElementById('statusDia').innerHTML = `✅ VÍDEO DIURNO SALVO (${segundosGravados}s)`;
     } else if(tipoVideoAtual === 'noite'){
@@ -917,7 +926,7 @@ function executarComandoCorte(acao){
   
   if(acao === 'bloquear'){
     if(confirm(`🛑 ATENÇÃO: Deseja realmente enviar o comando de CORTE DE IGNIÇÃO para o veículo [${veic}]?`)){
-      alert(`🛑 Comando de BLOQUEIO enviado via SMS/GPRS para o rastreador do veículo [${veic}]. Ignição cortada!`);
+      alert(`🛑 Comando de BLOQUEIO enviado via Firebase para o rastreador do veículo [${veic}]. Ignição cortada!`);
     }
   } else {
     if(confirm(`⚡ Deseja LIBERAR a ignição do veículo [${veic}]?`)){
