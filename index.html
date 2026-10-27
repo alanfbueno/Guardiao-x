@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GUARDIÃO X - FIREBASE PROD V2.82 - ISCA SOME AO DESATIVAR</title>
+<title>GUARDIÃO X - FIREBASE PROD V2.83 - NOME ISCA CORRIGIDO</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -166,30 +166,32 @@ function iniciarEscutaFirebase(){
   });
 }
 
-// *** FUNÇÃO CORRIGIDA - AGORA SOME QUANDO DESATIVAR ***
+// *** FUNÇÃO CORRIGIDA V2.83 - MOSTRA "CASA ALAN" ***
 function processarDadoFirebase(snapshot, ehIsca = false){
   try{
     const pos = snapshot.val();
     const key = snapshot.key;
     const mKey = (ehIsca ? 'ISCA_' : '') + key;
 
-    // SE DESATIVOU A ISCA (ativo=false) -> REMOVE O PINO AMARELO
-    if(!pos || pos.ativo === false || (ehIsca && pos.lat === undefined && pos.lng === undefined)){
+    // SE DESATIVOU A ISCA -> REMOVE O PINO
+    if(!pos || pos.ativo === false){
       if(markersMovel[mKey]){
         try{ map.removeLayer(markersMovel[mKey]); }catch(e){}
         delete markersMovel[mKey];
-        console.log(`Isca ${mKey} DESATIVADA - pino removido`);
       }
       return;
     }
 
     if(!pos.lat || !pos.lng) return;
     const lat = pos.lat, lng = pos.lng;
-    const id = pos.id || key || 'VEICULO-01';
+    
+    // CORREÇÃO PRINCIPAL - PEGA O NOME QUE VEM DO APP
+    const nomeDoApp = pos.nome || pos.id || key || 'ISCA';
+    const label = ehIsca ? `🎯 ISCA - ${nomeDoApp}` : `🚗 ${nomeDoApp}`;
+
     const iconUrl = ehIsca 
       ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png'
       : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
-    const label = ehIsca ? `🎯 ISCA - ${id}` : `🚗 ${id}`;
 
     if(!markersMovel[mKey]){
       markersMovel[mKey] = L.marker([lat, lng], {
@@ -200,10 +202,11 @@ function processarDadoFirebase(snapshot, ehIsca = false){
         })
       }).addTo(map)
         .bindTooltip(`<b>${label}</b>`, { permanent: true, direction: 'top', offset: [0, -35] })
-        .bindPopup(`<b>${label}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}<br><small>${ehIsca ? 'Canal: guardiao_anon (APP) - Status: '+(pos.ativo?'ATIVO':'DESATIVADO') : 'Canal: '+MEU_CANAL}</small>`);
+        .bindPopup(`<b>${label}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}<br><small>Nome: ${nomeDoApp}<br>Canal: ${ehIsca?'guardiao_anon':'privado'}<br>Status: ${pos.ativo?'ATIVO':'OFF'}<br>Hora: ${pos.time||''}</small>`);
     } else {
       markersMovel[mKey].setLatLng([lat, lng]);
       markersMovel[mKey].setTooltipContent(`<b>${label}</b>`);
+      markersMovel[mKey].setPopupContent(`<b>${label}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}<br><small>Nome: ${nomeDoApp}<br>Canal: ${ehIsca?'guardiao_anon':'privado'}<br>Status: ${pos.ativo?'ATIVO':'OFF'}<br>Hora: ${pos.time||''}</small>`);
     }
     if(cercaArmada){
       const distanciaMetros = map.distance([centroCercaLat, centroCercaLng], [lat, lng]);
