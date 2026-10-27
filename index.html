@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GUARDIÃO X - FIREBASE PROD V2.81 - COM ISCA FIXA</title>
+<title>GUARDIÃO X - FIREBASE PROD V2.82 - ISCA SOME AO DESATIVAR</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -33,8 +33,6 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 .dot.g{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
 .dot.r{background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes sirenePolicial{0%{background-color:rgba(239,68,68,0.4)}50%{background-color:rgba(37,99,235,0.4)}100%{background-color:rgba(239,68,68,0.4)}}
-.sirene-ativa{animation:sirenePolicial 0.5s infinite}
 #menuJanelas{display:flex;gap:4px;overflow-x:auto;background:var(--card);padding:6px 10px;border-bottom:1px solid var(--border)}
 .btn-janela{white-space:nowrap;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--input);color:var(--muted);font-size:10px;font-weight:900;cursor:pointer}
 .btn-janela.ativa{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -52,9 +50,6 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 .janela-conteudo{flex:1;overflow:auto;padding:8px;background:var(--bg)}
 #mapWrap{flex:1;display:flex;flex-direction:column;position:relative;background:#0b0f19}
 #map{width:100%;height:100%;min-height:300px;background:#0b0f19;flex:1;z-index:1}
-#mapDrone{width:100%;height:140px;background:#0b0f19;border-radius:6px;border:1px solid var(--border);margin-top:4px}
-#mapDroneFullscreen{width:100%;height:100%;background:#0b0f19}
-.modo-noite-ativo{filter:brightness(0.6) invert(1) contrast(1.3) hue-rotate(200deg)}
 .map-footer-bar{background:var(--card);border-top:1px solid var(--border);padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px}
 .map-footer-buttons{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .map-footer-info{font-family:monospace;font-size:10px;color:#fff;text-align:center;font-weight:bold}
@@ -69,6 +64,7 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 .btn-sm.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
 .btn-sm.green{background:var(--green);color:#000;border-color:var(--green);font-weight:900}
 .btn-sm.red{background:var(--red);color:#fff;border-color:var(--red);font-weight:900}
+.modo-noite-ativo{filter:brightness(0.6) invert(1) contrast(1.3) hue-rotate(200deg)}
 </style>
 </head>
 <body>
@@ -118,8 +114,8 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display
 </div>
 <div id="areaJanelas">
 <div class="janela ativa" id="j-mapa"><div id="mapWrap"><div id="map"></div></div><div class="map-footer-bar"><div class="map-footer-buttons"><button class="btn-sm primary" onclick="centralizarNoCelular()">📍 CENTRALIZAR NO MEU CELULAR</button><button class="btn-sm green" id="btnAlternarTemaMapa" onclick="alternarTemaMapa()">🌙 MODO NOITE</button></div><div class="map-footer-info" id="footerCoord">Aguardando sinal GPS...</div></div></div>
-<div class="janela" id="j-frota"><div class="janela-header"><h2 style="color:var(--green)">🚛 GERENCIAR FROTA</h2><span>BIOMETRIA</span></div><div class="janela-conteudo"><div class="card"><div class="grid2"><select id="vTipo" class="input"><option value="Máquinas Agrícolas" selected>Máquinas Agrícolas</option><option value="Caminhão">Caminhão</option><option value="Carro">Carro</option><option value="Moto">Moto</option><option value="Outro">Outro</option></select><input id="vPlaca" class="input" placeholder="Nº de Série / Chassi"></div><input id="vModelo" class="input" placeholder="Modelo / Descrição"><button class="btn-direct" onclick="treinar()" style="width:100%;padding:12px;font-size:11px;font-weight:900;margin-bottom:8px">➕ ADICIONAR VEÍCULO À FROTA</button></div><div class="card"><h3 style="color:#fff;font-size:11px;margin-bottom:6px">FROTA CADASTRADA (<span id="countVeh">0</span>)</h3><div id="listaVeh"></div></div></div></div>
-<div class="janela" id="j-rastreio"><div class="janela-header"><h2 style="color:#60a5fa">🛰️ DISPOSITIVOS</h2><span>CELULARES AVULSOS & ISCAS</span></div><div class="janela-conteudo"><div class="card" style="border:1px solid var(--primary);background:#0b1329"><h3 style="color:var(--primary);font-size:11px;margin-bottom:6px">📱 ADICIONAR CELULAR AVULSO</h3><input id="nomeNovoDispositivo" class="input" placeholder="Nome do Celular (Ex: Celular Trator A)"><button class="btn-sm primary" style="width:100%;padding:10px;font-weight:900" onclick="adicionarDispositivoAvulso()">➕ ADICIONAR CELULAR</button></div><div class="card" style="border:1px solid #00ff88;background:#0d1829"><h3 style="color:#00ff88;font-size:11px;margin-bottom:6px">🎯 GERAR LINK DE ISCA</h3><select id="selectDispositivoIsca" class="input"><option value="">Nenhum celular cadastrado...</option></select><div style="display:flex;gap:6px;margin-top:6px"><button class="btn-sm green" style="flex:1;padding:10px" onclick="enviarLinkWhatsApp()">💬 WHATSAPP</button><button class="btn-sm primary" style="flex:1;padding:10px" onclick="copiarLinkIscaDispositivo()">📋 COPIAR LINK</button></div><div id="linkGeradoBox" style="font-size:10px;color:#facc15;word-break:break-all;margin-top:6px"></div></div><div class="card"><h3 style="color:#fff;font-size:11px;margin-bottom:6px">CELULARES CADASTRADOS (<span id="countDisp">0</span>)</h3><div id="listaDispositivosCadastrados"></div></div></div></div>
+<div class="janela" id="j-frota"><div class="janela-header"><h2 style="color:var(--green)">🚛 GERENCIAR FROTA</h2></div><div class="janela-conteudo"><div class="card"><div class="grid2"><select id="vTipo" class="input"><option value="Máquinas Agrícolas" selected>Máquinas Agrícolas</option><option value="Caminhão">Caminhão</option><option value="Carro">Carro</option><option value="Moto">Moto</option></select><input id="vPlaca" class="input" placeholder="Nº de Série / Chassi"></div><input id="vModelo" class="input" placeholder="Modelo / Descrição"><button class="btn-direct" onclick="treinar()" style="width:100%;padding:12px;font-size:11px;font-weight:900;margin-bottom:8px">➕ ADICIONAR VEÍCULO</button></div><div class="card"><h3 style="color:#fff;font-size:11px;margin-bottom:6px">FROTA (<span id="countVeh">0</span>)</h3><div id="listaVeh"></div></div></div></div>
+<div class="janela" id="j-rastreio"><div class="janela-header"><h2 style="color:#60a5fa">🛰️ DISPOSITIVOS</h2></div><div class="janela-conteudo"><div class="card" style="border:1px solid var(--primary);background:#0b1329"><h3 style="color:var(--primary);font-size:11px;margin-bottom:6px">📱 ADICIONAR CELULAR AVULSO</h3><input id="nomeNovoDispositivo" class="input" placeholder="Nome do Celular"><button class="btn-sm primary" style="width:100%;padding:10px;font-weight:900" onclick="adicionarDispositivoAvulso()">➕ ADICIONAR CELULAR</button></div><div class="card" style="border:1px solid #00ff88;background:#0d1829"><h3 style="color:#00ff88;font-size:11px;margin-bottom:6px">🎯 GERAR LINK DE ISCA</h3><select id="selectDispositivoIsca" class="input"><option value="">Nenhum celular cadastrado...</option></select><div style="display:flex;gap:6px;margin-top:6px"><button class="btn-sm green" style="flex:1;padding:10px" onclick="enviarLinkWhatsApp()">💬 WHATSAPP</button><button class="btn-sm primary" style="flex:1;padding:10px" onclick="copiarLinkIscaDispositivo()">📋 COPIAR LINK</button></div><div id="linkGeradoBox" style="font-size:10px;color:#facc15;word-break:break-all;margin-top:6px"></div></div><div class="card"><h3 style="color:#fff;font-size:11px;margin-bottom:6px">CELULARES (<span id="countDisp">0</span>)</h3><div id="listaDispositivosCadastrados"></div></div></div></div>
 <div class="janela" id="j-cerca"><div class="janela-header"><h2 style="color:var(--yellow)">⚡ CERCA ELÉTRICA</h2><span id="badgeStatusCerca" class="badge off">DESLIGADA</span></div><div class="janela-conteudo" style="display:flex;flex-direction:column;gap:6px;align-items:center"><div class="card" style="width:100%;max-width:400px;text-align:center"><button id="btnLigaDesligaCerca" class="btn-sm red" style="width:100%;padding:12px;font-size:12px;font-weight:900;margin-bottom:10px" onclick="toggleChaveCerca()">🔴 CERCA DESLIGADA</button><label class="label">Raio: <b id="valorRaioTxt" style="color:var(--yellow)">10 metros</b></label><input type="range" id="raioSlider" min="1" max="50" value="10" step="1" style="width:100%;margin:8px 0;accent-color:var(--yellow)" oninput="atualizarSliderCerca(this.value)"><button class="btn-sm primary" style="background:var(--yellow);color:#000;width:100%;padding:12px;font-weight:900;margin-top:6px" onclick="armarCercaVirtual()">📍 FIXAR CENTRO NA POSIÇÃO ATUAL</button></div></div></div>
 <div class="janela" id="j-drone"><div class="janela-header"><h2 style="color:var(--primary)">🛸 CENTRAL DRONE</h2></div><div class="janela-conteudo"><div id="mapDrone" style="height:300px"></div></div></div>
 </div></div>
@@ -135,7 +131,7 @@ let meuCelularLat = null, meuCelularLng = null;
 let centroCercaLat = -22.71305, centroCercaLng = -47.65402;
 let raioMetros = 10, cercaArmada = false, modoMapaNoturno = false;
 function mostrarTela(tipo){ const l = document.getElementById('formLogin'); const c = document.getElementById('formCadastro'); if(l) l.style.display = tipo === 'login' ? 'block' : 'none'; if(c) c.style.display = tipo === 'cadastro' ? 'block' : 'none'; }
-function selecionarTipoPessoa(tipo){ tipoPessoaAtual = tipo; const btnPf = document.getElementById('btnPf'); const btnPj = document.getElementById('btnPj'); const inputNome = document.getElementById('cad_nome'); const inputDoc = document.getElementById('cad_doc'); if(tipo === 'pf'){ btnPf.classList.add('ativa'); btnPj.classList.remove('ativa'); inputNome.placeholder = "Nome Completo"; inputDoc.placeholder = "CPF"; } else { btnPj.classList.add('ativa'); btnPf.classList.remove('ativa'); inputNome.placeholder = "Razão Social"; inputDoc.placeholder = "CNPJ"; } }
+function selecionarTipoPessoa(tipo){ const btnPf = document.getElementById('btnPf'); const btnPj = document.getElementById('btnPj'); const inputNome = document.getElementById('cad_nome'); const inputDoc = document.getElementById('cad_doc'); if(tipo === 'pf'){ btnPf.classList.add('ativa'); btnPj.classList.remove('ativa'); inputNome.placeholder = "Nome Completo"; inputDoc.placeholder = "CPF"; } else { btnPj.classList.add('ativa'); btnPf.classList.remove('ativa'); inputNome.placeholder = "Razão Social"; inputDoc.placeholder = "CNPJ"; } }
 async function buscarCep(cep){ const cepLimpo = cep.replace(/\D/g, ''); if(cepLimpo.length !== 8) return; try { const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`); const dados = await resposta.json(); if(!dados.erro){ document.getElementById('cad_rua').value = dados.logradouro || ''; document.getElementById('cad_bairro').value = dados.bairro || ''; document.getElementById('cad_cidade').value = `${dados.localidade} - ${dados.uf}` || ''; document.getElementById('cad_numero').focus(); } }catch(e){} }
 function cadastrar(){ const nome = document.getElementById('cad_nome').value.trim(); const doc = document.getElementById('cad_doc').value.trim(); const email = document.getElementById('cad_email').value.trim().toLowerCase().replace(/\s/g,''); const senha = document.getElementById('cad_senha').value.trim(); const confirma = document.getElementById('cad_confirma').value.trim(); if(!nome || !doc || !email || !senha){ alert("❌ Preencha os campos obrigatórios."); return; } if(senha !== confirma){ alert("❌ As senhas não batem!"); return; } const dadosOperador = { nome, doc, email, senha }; localStorage.setItem('guardiao_operador', JSON.stringify(dadosOperador)); localStorage.setItem('guardiao_email', email); localStorage.setItem('guardiao_senha', senha); alert("✅ Cadastro realizado! Faça o login."); mostrarTela('login'); }
 function login(){ const emailInput = document.getElementById('email').value.trim().toLowerCase().replace(/\s/g,''); const senhaInput = document.getElementById('senha').value.trim(); const savedEmail = localStorage.getItem('guardiao_email'); const savedSenha = localStorage.getItem('guardiao_senha'); if(!savedEmail){ entrarSistema(); return; } if(emailInput === savedEmail && senhaInput === savedSenha){ entrarSistema(); } else { alert("❌ E-mail ou senha incorretos."); } }
@@ -147,12 +143,10 @@ function aplicarCamadasMapa(){ if(!map) return; if(tileLayerAtual) map.removeLay
 function alternarTemaMapa(){ modoMapaNoturno = !modoMapaNoturno; aplicarCamadasMapa(); }
 function iniciarRastreamentoCentralMovel(){ if(!navigator.geolocation){ document.getElementById('footerCoord').innerText = 'GPS não suportado'; return; } navigator.geolocation.watchPosition(pos => { meuCelularLat = pos.coords.latitude; meuCelularLng = pos.coords.longitude; if(!centralMarker){ centralMarker = L.marker([meuCelularLat, meuCelularLng], { icon: L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png', iconSize: [30, 45], iconAnchor: [15, 45], popupAnchor: [1, -34], shadowSize: [41, 41] }) }).addTo(map).bindTooltip("<b>📍 MINHA CENTRAL</b>", { permanent: true, direction: 'top', offset: [0, -40] }); map.setView([meuCelularLat, meuCelularLng], 16); } else { centralMarker.setLatLng([meuCelularLat, meuCelularLng]); } if(cercaArmada && !window.centroManualCerca){ centroCercaLat = meuCelularLat; centroCercaLng = meuCelularLng; if(cercaCirculo) cercaCirculo.setLatLng([centroCercaLat, centroCercaLng]); } document.getElementById('footerCoord').innerText = `MEU GPS: ${meuCelularLat.toFixed(5)}, ${meuCelularLng.toFixed(5)} | DB: FIREBASE`; }, err => { document.getElementById('footerCoord').innerText = `❌ Erro GPS: ${err.message}`; }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }); }
 
-// *** FUNÇÃO CORRIGIDA - AGORA LÊ 2 CANAIS: SEU + ISCA FIXA guardiao_anon ***
 function iniciarEscutaFirebase(){
   const refDispositivos = db.ref(`dispositivos/${MEU_CANAL}`);
   refDispositivos.on('child_added', snapshot => processarDadoFirebase(snapshot, false));
   refDispositivos.on('child_changed', snapshot => processarDadoFirebase(snapshot, false));
-  
   refDispositivos.on('child_removed', snapshot => {
     const keyRemovido = snapshot.key;
     if(markersMovel[keyRemovido] && markersMovel[keyRemovido] !== centralMarker){
@@ -160,8 +154,6 @@ function iniciarEscutaFirebase(){
       delete markersMovel[keyRemovido];
     }
   });
-
-  // ESCUTA A ISCA FIXA DO APP - guardiao_anon
   const refIscaAnon = db.ref(`dispositivos/guardiao_anon`);
   refIscaAnon.on('child_added', snapshot => processarDadoFirebase(snapshot, true));
   refIscaAnon.on('child_changed', snapshot => processarDadoFirebase(snapshot, true));
@@ -174,19 +166,29 @@ function iniciarEscutaFirebase(){
   });
 }
 
+// *** FUNÇÃO CORRIGIDA - AGORA SOME QUANDO DESATIVAR ***
 function processarDadoFirebase(snapshot, ehIsca = false){
   try{
     const pos = snapshot.val();
-    if(!pos || !pos.lat || !pos.lng) return;
-    const lat = pos.lat, lng = pos.lng;
     const key = snapshot.key;
-    const id = pos.id || key || 'VEICULO-01';
     const mKey = (ehIsca ? 'ISCA_' : '') + key;
 
+    // SE DESATIVOU A ISCA (ativo=false) -> REMOVE O PINO AMARELO
+    if(!pos || pos.ativo === false || (ehIsca && pos.lat === undefined && pos.lng === undefined)){
+      if(markersMovel[mKey]){
+        try{ map.removeLayer(markersMovel[mKey]); }catch(e){}
+        delete markersMovel[mKey];
+        console.log(`Isca ${mKey} DESATIVADA - pino removido`);
+      }
+      return;
+    }
+
+    if(!pos.lat || !pos.lng) return;
+    const lat = pos.lat, lng = pos.lng;
+    const id = pos.id || key || 'VEICULO-01';
     const iconUrl = ehIsca 
       ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png'
       : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
-
     const label = ehIsca ? `🎯 ISCA - ${id}` : `🚗 ${id}`;
 
     if(!markersMovel[mKey]){
@@ -198,12 +200,11 @@ function processarDadoFirebase(snapshot, ehIsca = false){
         })
       }).addTo(map)
         .bindTooltip(`<b>${label}</b>`, { permanent: true, direction: 'top', offset: [0, -35] })
-        .bindPopup(`<b>${label}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}<br><small>${ehIsca ? 'Canal: guardiao_anon (APP)' : 'Canal: '+MEU_CANAL}</small>`);
+        .bindPopup(`<b>${label}</b><br>Lat: ${lat.toFixed(5)}<br>Lng: ${lng.toFixed(5)}<br><small>${ehIsca ? 'Canal: guardiao_anon (APP) - Status: '+(pos.ativo?'ATIVO':'DESATIVADO') : 'Canal: '+MEU_CANAL}</small>`);
     } else {
       markersMovel[mKey].setLatLng([lat, lng]);
       markersMovel[mKey].setTooltipContent(`<b>${label}</b>`);
     }
-
     if(cercaArmada){
       const distanciaMetros = map.distance([centroCercaLat, centroCercaLng], [lat, lng]);
       if(distanciaMetros > raioMetros){
