@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISCA - GUARDIÃO X</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>body{background:#070a14;color:#fff;font-family:sans-serif;text-align:center;padding:20px}.box{background:#111827;border:1px solid #374151;border-radius:12px;padding:20px;max-width:360px;margin:auto}input{width:100%;padding:12px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#fff;margin-bottom:10px}button{width:100%;padding:14px;border:none;border-radius:8px;font-weight:900;cursor:pointer;margin-bottom:10px}.btn-autorizo{background:#2563eb;color:#fff}.btn-autorizo.ok{background:#00ff88;color:#000}.btn-ativar{background:#00ff88;color:#000}.btn-ativar.off{background:#ef4444;color:#fff}</style>
+</head>
+<body>
+<div class="box">
+<h2>🎯 ISCA GUARDIÃO X</h2>
+<input id="nomeIsca" placeholder="Nome: Ex: CelularAlan, Regina, Joao">
+<button id="btnAutorizo" class="btn-autorizo" onclick="autorizar()">1️⃣ AUTORIZO</button>
+<button id="btnAtivar" class="btn-ativar" onclick="toggleLocalizacao()">2️⃣ ATIVAR LOCALIZAÇÃO</button>
+<p id="status">Aguardando autorização...</p>
+<p id="bat">🔋 Bateria: --</p>
+<p style="font-size:11px;color:#d1d5db">Ao fechar esta aba ou clicar em DESATIVAR, a isca some do mapa na hora.</p>
+</div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBi-kFZpp8C1PicxzimnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const params=new URLSearchParams(location.search);
+const canal=params.get('c')||'guardiao_anon';
+let nomeParam=params.get('v')||'';
+let bateriaAtual=null, autorizado=false, ativo=false, watchId=null, meuRef=null, meuNome='';
+if(nomeParam){ document.getElementById('nomeIsca').value=decodeURIComponent(nomeParam); }
+async function atualizarBateria(){try{if(navigator.getBattery){let b=await navigator.getBattery();bateriaAtual=Math.round(b.level*100);document.getElementById('bat').textContent='🔋 Bateria: '+bateriaAtual+'%'+(b.charging?' ⚡ Carregando':'');}}catch(e){}}
+atualizarBateria();setInterval(atualizarBateria,30000);
+function autorizar(){
+  meuNome=document.getElementById('nomeIsca').value.trim().toUpperCase();
+  if(!meuNome){alert('Coloca o nome primeiro!');return;}
+  autorizado=true;
+  let b=document.getElementById('btnAutorizo');
+  b.textContent='✅ AUTORIZADO - '+meuNome;
+  b.classList.add('ok');
+  document.getElementById('status').textContent='Autorizado como '+meuNome+'. Agora clica em ATIVAR.';
+}
+function toggleLocalizacao(){
+  if(!autorizado){alert('Clica em AUTORIZO primeiro!');return;}
+  if(!ativo){ativar();}else{desativar();}
+}
+function ativar(){
+  meuNome=document.getElementById('nomeIsca').value.trim().toUpperCase();
+  ativo=true;
+  let b=document.getElementById('btnAtivar');
+  b.textContent='🛑 DESATIVAR LOCALIZAÇÃO';
+  b.classList.add('off');
+  meuRef=db.ref('dispositivos/'+canal+'/'+meuNome);
+  document.getElementById('status').textContent='🟢 ATIVA - Enviando GPS...';
+  watchId=navigator.geolocation.watchPosition(p=>{
+    meuRef.set({nome:meuNome,id:meuNome,lat:p.coords.latitude,lng:p.coords.longitude,bat:bateriaAtual,ativo:true,time:new Date().toLocaleTimeString('pt-BR')});
+    document.getElementById('status').textContent='📍 Enviando: '+p.coords.latitude.toFixed(5)+', '+p.coords.longitude.toFixed(5);
+  },e=>{document.getElementById('status').textContent='❌ Erro GPS: '+e.message;},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
+}
+function desativar(){
+  ativo=false;
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+  removerDoFirebase();
+  let b=document.getElementById('btnAtivar');
+  b.textContent='2️⃣ ATIVAR LOCALIZAÇÃO';
+  b.classList.remove('off');
+  document.getElementById('status').textContent='🔴 DESATIVADA - Sumiu do mapa.';
+}
+function removerDoFirebase(){ if(meuRef){try{meuRef.remove();}catch(e){}} }
+window.addEventListener('beforeunload',removerDoFirebase);
+window.addEventListener('pagehide',removerDoFirebase);
+</script>
+</body>
+</html>
