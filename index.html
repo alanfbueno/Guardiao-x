@@ -318,7 +318,7 @@ function simularRompimentoCerca(){ dispararSireneEmergencia("TESTE DE ROMPIMENTO
 document.querySelectorAll('.btn-janela').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.btn-janela').forEach(x=>x.classList.remove('ativa'));b.classList.add('ativa');const j=b.dataset.j;document.querySelectorAll('.janela').forEach(w=>w.classList.remove('ativa'));document.getElementById('j-'+j).classList.add('ativa');if(j==='mapa')setTimeout(()=>{if(map){map.invalidateSize();}},400);if(j==='drone')setTimeout(()=>{initMapDrone();},400);if(j==='cerca') atualizarSelectCerca();});});
 setInterval(()=>{const h=document.getElementById('hora');if(h)h.textContent=new Date().toLocaleTimeString('pt-BR');},1000);
 // ===== TRACCAR - V7 =====
-const TRACCAR_USER = "alangbueno@gmail.com";
+const TRACCAR_USER = "alanfbueno@gmail.com";
 const TRACCAR_PASS = "Ramonbueno23#";
 let traccarTimer = null;
 let traccarSelecionados = {};
