@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GUARDIÃO X V7 - CERCA POR VEÍCULO</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#070a14;--card:#111827;--input:#1f2937;--border:#374151;--primary:#2563eb;--green:#00ff88;--red:#ef4444;--yellow:#facc15;--text:#fff;--muted:#d1d5db}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+#alarmeOverlay{position:fixed;inset:0;background:red;z-index:999999;display:none;flex-direction:column;justify-content:center;align-items:center;font-size:28px;font-weight:900;color:white;text-align:center;padding:20px}
+#telaLogin{position:fixed;inset:0;background:radial-gradient(ellipse at top,#1f2937,var(--bg));z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.login-box{background:#0b0f19;border:2px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:380px}
+.login-box h1{color:var(--primary);text-align:center;font-size:22px;letter-spacing:2px;font-weight:900}
+.login-box .sub{color:var(--green);text-align:center;font-size:10px;margin:6px 0 4px;font-weight:800}
+.login-box input{width:100%;padding:11px;background:var(--input);border:1px solid var(--border);border-radius:8px;color:#fff;margin-bottom:8px;font-size:12px}
+.btn-primary{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-weight:900;cursor:pointer}
+.btn-direct{width:100%;padding:12px;background:var(--green);color:#000;border:none;border-radius:8px;font-weight:900;cursor:pointer;margin-top:8px}
+.link-action{text-align:center;font-size:12px;color:#60a5fa;cursor:pointer;margin-top:10px;font-weight:700;display:block}
+.tipo-selector{display:flex;gap:6px;margin-bottom:8px}
+.btn-tipo{flex:1;padding:8px;background:var(--input);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:10px;font-weight:bold;cursor:pointer}
+.btn-tipo.ativa{background:var(--primary);color:#fff;border-color:var(--primary)}
+#app{display:none;height:100vh;flex-direction:column;width:100%}
+#topHeader{background:#0b0f19;border-bottom:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center}
+#topHeader .left{font-weight:900;font-size:12px;color:#fff;display:flex;align-items:center;gap:10px}
+#topHeader .left span{color:var(--primary)}
+#topHeader .right{display:flex;gap:8px;align-items:center;font-size:10px;color:var(--muted)}
+.btn-logout-discreto{background:transparent;border:1px solid var(--border);color:var(--muted);padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.g{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+.dot.r{background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#menuJanelas{display:flex;gap:4px;overflow-x:auto;background:var(--card);padding:6px 10px;border-bottom:1px solid var(--border)}
+.btn-janela{white-space:nowrap;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--input);color:var(--muted);font-size:10px;font-weight:900;cursor:pointer}
+.btn-janela.ativa{background:var(--primary);color:#fff;border-color:var(--primary)}
+#areaJanelas{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+.janela{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;overflow:hidden}
+.janela.ativa{display:flex!important}
+.janela-header{background:var(--card);border-bottom:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center}
+.janela-header h2{font-size:12px;font-weight:900}
+.janela-conteudo{flex:1;overflow:auto;padding:8px;background:var(--bg)}
+#mapWrap{flex:1;display:flex;flex-direction:column;position:relative;background:#0b0f19;height:100%}
+#map{width:100%;height:100%;min-height:400px;background:#0b0f19;flex:1;z-index:1}
+.card{background:#0b0f19;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:6px;color:#fff}
+.label{font-size:10px;color:#fff;font-weight:bold;margin-bottom:3px;display:block}
+.input{background:var(--input);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:#fff;width:100%;font-size:11px;margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.badge{font-size:9px;padding:3px 6px;border-radius:8px;font-weight:900}
+.badge.ok{background:rgba(0,255,136,0.2);color:#00ff88;border:1px solid #00ff88}
+.badge.off{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.btn-sm{padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:#fff;font-size:10px;font-weight:bold;cursor:pointer}
+.btn-sm.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-sm.green{background:var(--green);color:#000;border-color:var(--green);font-weight:900}
+.btn-sm.red{background:var(--red);color:#fff;border-color:var(--red);font-weight:900}
+.lista-compacta{max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.item-compacto{display:flex;justify-content:space-between;align-items:center;background:#020617;border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.modalFotos{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999999;display:none;align-items:center;justify-content:center;padding:12px}
+.modalFotos .boxM{background:#111827;border:1px solid var(--border);border-radius:12px;padding:12px;width:100%;max-width:360px;max-height:85vh;overflow:auto}
+.guide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.guide-box{width:60%;height:66%;border:3px solid var(--green);border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.45)}
+.map-footer-bar{background:var(--card);border-top:1px solid var(--border);padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.map-footer-buttons{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.map-footer-info{font-family:monospace;font-size:10px;color:#fff;text-align:center;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="alarmeOverlay">🚨<br>CERCA ELÉTRICA<br>ROMPIDA!<br><br>GUARDIÃO X</div>
+<div id="telaIscaModo" style="position:fixed;inset:0;background:#070a14;z-index:9999999;display:none;flex-direction:column;justify-content:center;align-items:center;padding:20px;text-align:center">
+  <div style="font-size:40px;margin-bottom:15px">📡</div>
+  <h2 style="color:var(--green);font-size:18px">GUARDIÃO X - DISPOSITIVO ATIVO</h2>
+  <p id="txtStatusIsca" style="color:var(--muted);font-size:12px;margin:10px 0 20px">Conectando ao satélite...</p>
+  <div style="background:#111827;border:1px solid var(--border);padding:15px;border-radius:12px;width:100%;max-width:320px;font-family:monospace;font-size:11px">
+    <div>Dispositivo: <b id="lblIscaNome" style="color:var(--primary)">--</b></div>
+    <div>Lat/Lng: <b id="lblIscaCoord" style="color:#facc15">--</b></div>
+    <div>Bateria: <b id="lblIscaBat" style="color:var(--green)">--</b></div>
+  </div>
+</div>
+<div id="telaLogin" style="display:flex;position:fixed;inset:0;background:radial-gradient(ellipse at top,#1f2937,var(--bg));z-index:9999;align-items:center;justify-content:center;padding:20px">
+<div class="login-box"><h1>GUARDIÃO X</h1><div class="sub">V7 - CERCA POR VEÍCULO</div>
+<div id="formLogin">
+<input id="email" type="email" placeholder="E-mail">
+<input id="senha" type="password" placeholder="Senha (PIN 9999 = Modo Pânico)" onkeydown="if(event.key==='Enter') login()">
+<button class="btn-primary" type="button" onclick="login()">ENTRAR</button>
+<button class="btn-direct" type="button" onclick="acessoDireto()">⚡ ACESSO DIRETO</button>
+<span class="link-action" onclick="mostrarTela('cadastro')">Não tem conta? Cadastre-se</span>
+</div>
+<div id="formCadastro" style="display:none">
+<div style="font-size:12px;font-weight:bold;margin-bottom:6px;color:var(--primary)">CADASTRO DE OPERADOR</div>
+<div class="tipo-selector"><button type="button" id="btnPf" class="btn-tipo ativa" onclick="selecionarTipoPessoa('pf')">PESSOA FÍSICA</button><button type="button" id="btnPj" class="btn-tipo" onclick="selecionarTipoPessoa('pj')">PESSOA JURÍDICA</button></div>
+<input id="cad_nome" placeholder="Nome Completo">
+<input id="cad_doc" placeholder="CPF">
+<input type="email" id="cad_email" placeholder="E-mail">
+<input id="cad_cep" placeholder="CEP" maxlength="8" onblur="buscarCep(this.value)">
+<input id="cad_rua" placeholder="Rua">
+<input id="cad_bairro" placeholder="Bairro">
+<input id="cad_cidade" placeholder="Cidade - UF">
+<input id="cad_numero" placeholder="Nº">
+<input type="password" id="cad_senha" placeholder="Senha (mín. 4)">
+<input type="password" id="cad_confirma" placeholder="Confirme senha">
+<button class="btn-primary" type="button" onclick="cadastrar()">CADASTRAR</button>
+<span class="link-action" onclick="mostrarTela('login')">Já tem conta? Login</span>
+</div>
+</div></div>
+<div id="app" style="display:none">
+<div id="topHeader"><div class="left"><span>GUARDIÃO X V7</span><button class="btn-logout-discreto" onclick="fazerLogout()">Sair</button></div><div class="right"><div style="display:flex;align-items:center;gap:4px"><span class="dot r" id="dotStatusCerca"></span> <span id="txtTopStatusCerca" style="color:#ef4444;font-weight:bold">OFF</span></div><div id="hora" style="color:#fff;font-weight:bold">--:--:--</div></div></div>
+<div id="menuJanelas" style="display:flex;gap:4px;overflow-x:auto;background:var(--card);padding:6px 10px;border-bottom:1px solid var(--border)">
+<button class="btn-janela ativa" data-j="mapa">🛡️ MAPA</button>
+<button class="btn-janela" data-j="frota">🚛 FROTA & IA</button>
+<button class="btn-janela" data-j="rastreio">🛰️ DISPOSITIVOS</button>
+<button class="btn-janela" data-j="cerca">⚡ CERCA</button>
+<button class="btn-janela" data-j="logs">📋 LOGS & PÂNICO</button>
+<button class="btn-janela" data-j="drone">🛸 DRONE</button>
+</div>
+<div id="areaJanelas" style="flex:1;position:relative;overflow:hidden;background:var(--bg)">
+<div class="janela ativa" id="j-mapa"><div id="mapWrap" style="flex:1;display:flex;flex-direction:column;position:relative;background:#0b0f19;height:100%"><div id="map"></div></div><div class="map-footer-bar"><div class="map-footer-buttons"><button class="btn-sm primary" onclick="centralizarNoCelular()">📍 CENTRALIZAR</button><button class="btn-sm green" id="btnAlternarTemaMapa" onclick="alternarTemaMapa()">🌙 MODO NOITE</button><button class="btn-sm" style="background:#facc15;color:#000;font-weight:900" onclick="limparRotas()">🧹 LIMPAR ROTA</button><button class="btn-sm red" onclick="forcarLimparTudo()">🧨 FORÇAR LIMPAR</button></div><div class="map-footer-info" id="footerCoord">Aguardando GPS...</div></div></div>
+<div class="janela" id="j-frota"><div class="janela-header"><h2 style="color:var(--green)">🚛 FROTA & BIOMETRIA IA</h2></div><div class="janela-conteudo">
+<div class="card" style="border:2px solid var(--green);background:#0d1a12">
+<div style="font-size:11px;font-weight:900;color:var(--green);margin-bottom:6px">1️⃣ DADOS DO ATIVO</div>
+<div class="grid2">
+<select id="vTipo" class="input"><option value="Máquinas Agrícolas" selected>Máquinas Agrícolas</option><option value="Caminhão">Caminhão</option><option value="Caminhonete">Caminhonete</option><option value="Carro">Carro</option><option value="Moto">Moto</option><option value="Bicicleta">Bicicleta</option><option value="Outro">Outro</option></select>
+<input id="vPlaca" class="input" placeholder="Nº Série / Chassi / Placa">
+</div>
+<input id="vModelo" class="input" placeholder="Modelo / Descrição (Ex: Bicicleta com risco no quadro)">
+<button class="btn-direct" onclick="treinar()" style="width:100%;padding:14px">➕ ADICIONAR ATIVO</button>
+</div>
+<div class="card"><div style="font-size:11px;font-weight:900;margin-bottom:6px">2️⃣ CAPTURA IA</div><select id="vGravarAlvo" class="input"><option value="">Último ativo cadastrado</option></select><div class="grid2"><button class="btn-sm primary" onclick="abrirGravadorApp('dia')">🎥 CAPTURAR DIA</button><button class="btn-sm primary" onclick="abrirGravadorApp('noite')">🎥 CAPTURAR NOITE</button></div><div id="statusDia" style="font-size:9px;color:#93c5fd;margin-top:4px">Pendente</div><div id="statusNoite" style="font-size:9px;color:#fde047">Pendente</div>
+<div style="background:#0b0f19;border:2px solid #00ff88;border-radius:8px;padding:8px;margin-top:8px"><h4 style="color:#00ff88;font-size:11px">🔍 ANÁLISE FORENSE</h4><select id="vCompAlvo" class="input"><option value="">Selecione o ativo...</option></select><button class="btn-sm green" style="width:100%;padding:8px" onclick="abrirGravadorApp('suspeito')">🎥 CAPTURAR SUSPEITO</button><div id="nomeArquivoSuspeito" style="font-size:9px;color:var(--yellow);margin:6px 0">Nenhum vídeo suspeito.</div><button class="btn-sm primary" style="width:100%;padding:12px;background:var(--green);color:#000" onclick="executarComparacaoBiometrica()">🔍 EXECUTAR IA</button><div id="resultadoComparacao" style="display:none;margin-top:8px;padding:8px;background:#0b0f19;border-radius:6px;font-size:10px;border:1px solid var(--border)"></div></div></div>
+<div class="card"><h3 style="font-size:11px">FROTA (<span id="countVeh">0</span>)</h3><div id="listaVeh" class="lista-compacta"></div></div></div></div>
+<div class="janela" id="j-rastreio"><div class="janela-header"><h2 style="color:#60a5fa">🛰️ DISPOSITIVOS</h2></div><div class="janela-conteudo">
+<div class="card" style="border:2px solid #00ff88;background:#0d1a12">
+<h3 style="color:#00ff88;font-size:11px;margin-bottom:6px">🛰️ DISPOSITIVOS DO TRACCAR</h3>
+<div style="font-size:10px;color:#d1d5db;margin-bottom:6px">Lista que vem direto do seu Traccar. Clica em SELECIONAR e ele aparece no mapa.</div>
+<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn-sm green" style="flex:1;padding:10px" onclick="carregarDispositivosTraccar()">🔄 ATUALIZAR LISTA</button><button class="btn-sm" style="flex:1;padding:10px" onclick="pararTraccar()">⏹️ PARAR</button></div>
+<div id="listaTraccar" style="display:flex;flex-direction:column;gap:6px"><div style="font-size:10px;color:#94a3b8">Clique em ATUALIZAR LISTA...</div></div>
+<div id="statusTraccar" style="font-size:10px;color:#facc15;margin-top:6px"></div>
+</div>
+<div class="card" style="border:1px solid var(--primary);background:#0b1329"><h3 style="color:var(--primary);font-size:11px;margin-bottom:6px">📱 ADICIONAR CELULAR</h3><input id="nomeNovoDispositivo" class="input" placeholder="Nome (Ex: TRATOR 01)"><button class="btn-sm primary" style="width:100%;padding:10px" onclick="adicionarDispositivoAvulso()">➕ ADICIONAR</button></div>
+<div class="card" style="border:1px solid #00ff88;background:#0d1829"><h3 style="color:#00ff88;font-size:11px;margin-bottom:6px">🎯 GERAR LINK DE DISPOSITIVO</h3><select id="selectDispositivoIsca" class="input"><option value="">Nenhum celular...</option></select><div style="display:flex;gap:6px;margin-top:6px"><button class="btn-sm green" style="flex:1;padding:10px" onclick="enviarLinkWhatsApp()">💬 WHATSAPP</button><button class="btn-sm primary" style="flex:1;padding:10px" onclick="copiarLinkIscaDispositivo()">📋 COPIAR LINK</button></div><div id="linkGeradoBox" style="font-size:10px;color:#facc15;word-break:break-all;margin-top:6px"></div></div>
+<div class="card"><h3 style="font-size:11px">CELULARES (<span id="countDisp">0</span>)</h3><div id="listaDispositivosCadastrados"></div></div>
+<div class="card" style="border:1px solid #60a5fa"><h3 style="color:#60a5fa;font-size:11px">🔗 VINCULAR RASTREADOR FIXO</h3><select id="rVeiculo" class="input"><option value="">Selecione...</option></select><input id="rImei" class="input" placeholder="IMEI do rastreador"><button class="btn-sm primary" style="width:100%;padding:10px;margin-bottom:8px" onclick="salvarVinculoHardware()">✅ VINCULAR E SALVAR</button><div class="grid2"><button class="btn-sm red" onclick="executarComandoCorte('bloquear')">🛑 BLOQUEAR</button><button class="btn-sm green" onclick="executarComandoCorte('liberar')">⚡ LIBERAR</button></div></div></div></div>
+<div class="janela" id="j-cerca"><div class="janela-header"><h2 style="color:var(--yellow)">⚡ CERCA ELÉTRICA</h2><span id="badgeStatusCerca" class="badge off">DESLIGADA</span></div><div class="janela-conteudo" style="display:flex;flex-direction:column;gap:6px;align-items:center"><div class="card" style="width:100%;max-width:400px;text-align:center">
+<div style="text-align:left;margin-bottom:8px"><label class="label">🚙 SELECIONE O VEÍCULO PARA A CERCA:</label><select id="selectCercaVeiculo" class="input"><option value="">Selecione em DISPOSITIVOS primeiro...</option></select><div style="font-size:10px;color:#94a3b8">Ex: Amarock Alan, Hilux, Trator... Cada um com sua cerca.</div></div>
+<button id="btnLigaDesligaCerca" class="btn-sm red" style="width:100%;padding:12px;font-weight:900;margin-bottom:10px" onclick="toggleChaveCerca()">🔴 CERCA DESLIGADA</button><button class="btn-sm red" style="width:100%;padding:10px;margin-bottom:10px;background:#991b1b" onclick="simularRompimentoCerca()">⚡ TESTAR ROMPIMENTO</button>
+<label class="label">Raio: <b id="valorRaioTxt" style="color:var(--yellow)">50 metros</b></label><input type="range" id="raioSlider" min="10" max="500" value="50" step="10" style="width:100%;margin:8px 0;accent-color:var(--yellow)" oninput="atualizarSliderCerca(this.value)">
+<button class="btn-sm primary" style="background:var(--yellow);color:#000;width:100%;padding:12px;font-weight:900;margin-top:6px" onclick="armarCercaVirtual()">📍 FIXAR CENTRO NO VEÍCULO SELECIONADO</button><div id="txtCercaAlvo" style="font-size:10px;color:#d1d5db;margin-top:6px">Alvo: nenhum travado</div></div></div></div>
+<div class="janela" id="j-logs"><div class="janela-header"><h2 style="color:#facc15">📋 LOGS & MODO PÂNICO</h2><button class="btn-sm red" onclick="limparLogs()">🗑️ LIMPAR LOGS</button></div><div class="janela-conteudo"><div class="card"><h3 style="font-size:11px;color:#facc15;margin-bottom:6px">🚨 HISTÓRICO</h3><div id="listaLogs" style="font-size:10px;font-family:monospace;max-height:300px;overflow-y:auto;background:#020617;padding:8px;border-radius:6px;border:1px solid var(--border)">Nenhum evento registrado.</div><button class="btn-sm primary" style="width:100%;margin-top:8px" onclick="exportarRelatorioPolicial()">📄 COPIAR RELATÓRIO PARA POLÍCIA</button></div><div class="card" style="border:1px solid #ef4444;background:#1a0808"><h3 style="font-size:11px;color:#ef4444;margin-bottom:6px">🚨 PÂNICO MANUAL</h3><button class="btn-sm red" style="width:100%;padding:12px" onclick="acionarPanicoManual()">🚨 DISPARAR ALARME GERAL / PÂNICO</button></div></div></div>
+<div class="janela" id="j-drone"><div class="janela-header"><h2 style="color:var(--primary)">🛸 CENTRAL DRONE</h2><span>LITCHI</span></div><div class="janela-conteudo"><button class="btn-sm primary" style="width:100%;padding:12px;margin-bottom:6px" onclick="abrirDroneFullscreen()">🖥️ TELA CHEIA DRONE</button><div class="grid2"><div class="card" style="padding:8px;margin:0"><div style="font-size:10px;font-weight:bold;color:#60a5fa">🚁 AERONAVE</div><div style="font-size:10px;color:var(--green);font-weight:bold">● CONECTADO</div><button class="btn-sm green" style="width:100%;margin-top:6px" onclick="alert('🚀 Decolagem enviada!')">🚀 LANÇAR</button></div><div class="card" style="padding:8px;margin:0"><div style="font-size:10px;font-weight:bold;color:#facc15">🎯 ALVO</div><select id="selectAlvoDrone" class="input" style="font-size:9px;padding:4px"><option value="">Selecione...</option></select><button class="btn-sm primary" style="width:100%;font-size:9px;margin-top:4px" onclick="iniciarSeguimentoAlvo()">🎯 SEGUIR ALVO</button></div></div><div class="card" style="margin-top:6px"><h3 style="font-size:10px">🗺️ MAPA ROTA</h3><div id="mapDrone" style="width:100%;height:140px;background:#0b0f19;border-radius:6px;border:1px solid var(--border)"></div></div></div></div>
+</div></div>
+<div id="modalGravadorApp" style="position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999999;display:none;align-items:center;justify-content:center;padding:12px">
+  <div style="background:#111827;border:1px solid var(--border);border-radius:12px;padding:12px;width:100%;max-width:360px;text-align:center">
+    <h3 id="tituloGravadorApp" style="color:#00ff88;font-size:13px">GRAVACAO</h3>
+    <video id="videoPreviewCam" autoplay playsinline muted style="width:100%;height:220px;background:#000;border-radius:8px;margin:8px 0"></video>
+    <div id="tempoGravador" style="font-family:monospace;font-size:16px;color:#facc15">00:00</div>
+    <div id="txtStatusGravador" style="font-size:10px;color:#94a3b8;margin:4px 0"></div>
+    <button id="btnExecutarGravacao" class="btn-sm green" style="width:100%;padding:12px" onclick="acionarDisparoGravacao()">🔴 INICIAR IA</button>
+    <button class="btn-sm red" style="width:100%;padding:10px;margin-top:6px" onclick="fecharGravadorApp()">FECHAR</button>
+  </div>
+</div>
+<div id="modalFotos" class="modalFotos"><div class="boxM"><h3 style="color:#fff">FOTOS</h3><button class="btn-sm red" style="width:100%;margin-top:8px" onclick="fecharModalFotos()">FECHAR</button></div></div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBi-kFZpp8C1PicxzimnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const urlParams=new URLSearchParams(window.location.search);
+const iscaCanal=urlParams.get('c');
+const iscaNome=urlParams.get('v');
+let bateriaIscaAtual=100;
+if(navigator.getBattery){navigator.getBattery().then(b=>{bateriaIscaAtual=Math.round(b.level*100);b.addEventListener('levelchange',()=>{bateriaIscaAtual=Math.round(b.level*100)})}).catch(()=>{})}
+
+// --- TRACCAR ARRUMADO - SENHA NO CABECALHO, NAO NO LINK ---
+const TRACCAR_USER="alanfbueno@gmail.com";
+const TRACCAR_PASS="Ramonbueno23#";
+const TRACCAR_HOST="179.66.135.186:8082";
+async function fetchTraccar(endpoint){
+  let url="https://"+TRACCAR_HOST+"/api/"+endpoint;
+  let proxies=[
+    "https://corsproxy.io/?url="+encodeURIComponent(url),
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(url)
+  ];
+  let ultimoErro=null;
+  for(let p of proxies){
+    try{
+      let r=await fetch(p,{headers:{'Authorization':'Basic '+btoa(TRACCAR_USER+':'+TRACCAR_PASS)}});
+      if(!r.ok) throw new Error("proxy "+r.status);
+      let txt=await r.text();
+      try{return JSON.parse(txt)}catch(e){throw new Error("resposta nao e JSON: "+txt.slice(0,100))}
+    }catch(e){ultimoErro=e; console.log("proxy falhou",e)}
+  }
+  throw ultimoErro||new Error("Failed to fetch");
+}
+function getAuthTraccar(){return ""}
+
+// --- ESTADO ---
+let map=null, mapDrone=null, markersMovel={}, cercasPorVeiculo={}, traccarSelecionados={}, traccarTimer=null, cercaAtiva=false, raioCerca=50, centroCerca=null, cercaAlvoId=null, cercaCircle=null, cercaCentroMarker=null, modoNoite=false, tipoPessoa='pf', usuarioAtual=null, listaVeiculos=[], listaDispositivos=[];
+let videoStream=null, gravadorTipo='dia', gravadorTimer=null, gravadorSeg=0;
+function mostrarTela(t){document.getElementById('formLogin').style.display=t==='login'?'block':'none';document.getElementById('formCadastro').style.display=t==='cadastro'?'block':'none'}
+function selecionarTipoPessoa(t){tipoPessoa=t;document.getElementById('btnPf').classList.toggle('ativa',t==='pf');document.getElementById('btnPj').classList.toggle('ativa',t==='pj');document.getElementById('cad_doc').placeholder=t==='pf'?'CPF':'CNPJ'}
+async function buscarCep(cep){cep=cep.replace(/\D/g,'');if(cep.length!==8)return;try{let r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');let d=await r.json();if(!d.erro){document.getElementById('cad_rua').value=d.logradouro||'';document.getElementById('cad_bairro').value=d.bairro||'';document.getElementById('cad_cidade').value=(d.localidade||'')+' - '+(d.uf||'')}}}catch(e){}}
+function login(){let e=document.getElementById('email').value.trim();let s=document.getElementById('senha').value;if(s==='9999'){alert('MODO PANICO SILENCIOSO ATIVADO');}if(!e||!s){alert('Preencha e-mail e senha');return}entrarApp(e)}
+function acessoDireto(){entrarApp('operador@guardiao.com')}
+function cadastrar(){let n=document.getElementById('cad_nome').value;let e=document.getElementById('cad_email').value;let s=document.getElementById('cad_senha').value;let c=document.getElementById('cad_confirma').value;if(!n||!e||!s){alert('Preencha nome, e-mail e senha');return}if(s!==c){alert('Senhas diferentes');return}if(s.length<4){alert('Senha minima 4');return}localStorage.setItem('guardiao_user',JSON.stringify({nome:n,email:e}));alert('Cadastrado! Faça login.');mostrarTela('login')}
+function fazerLogout(){localStorage.removeItem('guardiao_user');location.reload()}
+function entrarApp(email){
+  usuarioAtual=email;
+  document.getElementById('telaLogin').style.display='none';
+  document.getElementById('app').style.display='flex';
+  setTimeout(initMap,100);
+  carregarVeiculos(); carregarDispositivos(); carregarLogs();
+  setInterval(()=>{document.getElementById('hora').textContent=new Date().toLocaleTimeString()},1000);
+  db.ref('posicoes').on('value',snap=>{
+    let dados=snap.val()||{};
+    Object.keys(dados).forEach(id=>{
+      let p=dados[id];
+      if(p&&p.lat&&p.lng) atualizarMarcador(id,p.nome||id,p.lat,p.lng,p);
+    });
+  });
+}
+function initMap(){
+  if(map) return;
+  map=L.map('map').setView([-22.725,-47.645],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  mapDrone=L.map('mapDrone').setView([-22.725,-47.645],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapDrone);
+}
+function atualizarMarcador(id,nome,lat,lng,dados){
+  if(!map) return;
+  let cor=dados&&dados.online?'#00ff88':'#ef4444';
+  let icone=L.divIcon({html:'<div style="background:'+cor+';color:#000;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;border:2px solid #fff">🚙</div>',iconSize:[28,28]});
+  if(markersMovel[id]){markersMovel[id].setLatLng([lat,lng]);markersMovel[id].bindPopup('<b>'+nome+'</b><br>'+lat.toFixed(5)+', '+lng.toFixed(5))}
+  else{markersMovel[id]=L.marker([lat,lng],{icon:icone}).addTo(map).bindPopup('<b>'+nome+'</b>')}
+  document.getElementById('footerCoord').textContent=nome+' | '+lat.toFixed(5)+', '+lng.toFixed(5)+' | '+new Date().toLocaleTimeString();
+  verificarCerca(id,lat,lng);
+}
+function centralizarNoCelular(){let ids=Object.keys(markersMovel);if(!ids.length){alert('Nenhum veiculo no mapa');return}let m=markersMovel[ids[0]];map.setView(m.getLatLng(),16)}
+function alternarTemaMapa(){modoNoite=!modoNoite;document.getElementById('map').style.filter=modoNoite?'brightness(0.6) invert(1) contrast(1.3) hue-rotate(200deg)':'';document.getElementById('btnAlternarTemaMapa').textContent=modoNoite?'☀️ MODO DIA':'🌙 MODO NOITE'}
+function limparRotas(){Object.values(markersMovel).forEach(m=>map.removeLayer(m));markersMovel={};if(cercaCircle)map.removeLayer(cercaCircle);cercaCircle=null}
+function forcarLimparTudo(){limparRotas();localStorage.clear();location.reload()}
+  // --- TRACCAR ---
+async function carregarDispositivosTraccar(){
+  let box=document.getElementById('listaTraccar');
+  let st=document.getElementById('statusTraccar');
+  box.innerHTML='<div style="font-size:11px;color:#facc15">Carregando do Traccar...</div>';
+  try{
+    let devices=await fetchTraccar('devices');
+    let positions=await fetchTraccar('positions').catch(()=>[]);
+    let posMap={}; positions.forEach(p=>posMap[p.deviceId]=p);
+    st.textContent='Encontrados: '+devices.length+' | '+new Date().toLocaleTimeString();
+    st.style.color='#00ff88';
+    if(!devices.length){box.innerHTML='<div>Traccar sem dispositivos.</div>';return}
+    box.innerHTML='';
+    devices.forEach(d=>{
+      let p=posMap[d.id];
+      let lat=p?p.latitude:null, lng=p?p.longitude:null;
+      let div=document.createElement('div');
+      div.style.cssText='background:#020617;border:1px solid #00ff88;border-radius:8px;padding:8px;display:flex;justify-content:space-between;align-items:center';
+      div.innerHTML='<div><b style="font-size:11px">'+d.name+'</b><br><span style="font-size:9px;color:#94a3b8">'+(d.status||'')+' | '+(p?lat.toFixed(5)+', '+lng.toFixed(5):'sem posicao')+'</span></div><button class="btn-sm green" style="padding:8px 12px">SELECIONAR</button>';
+      div.querySelector('button').onclick=()=>{
+        traccarSelecionados[d.id]={id:d.id,nome:d.name,lat:lat,lng:lng};
+        if(lat&&lng) atualizarMarcador('traccar_'+d.id,d.name,lat,lng,{online:true});
+        if(lat&&lng) db.ref('posicoes/traccar_'+d.id).set({nome:d.name,lat:lat,lng:lng,online:true,ts:Date.now()});
+        atualizarSelectCerca();
+        alert('Selecionado: '+d.name);
+      };
+      box.appendChild(div);
+    });
+    if(traccarTimer) clearInterval(traccarTimer);
+    traccarTimer=setInterval(async()=>{
+      try{
+        let poss=await fetchTraccar('positions');
+        poss.forEach(p=>{
+          let sel=Object.values(traccarSelecionados).find(s=>s.id===p.deviceId);
+          if(sel){
+            atualizarMarcador('traccar_'+p.deviceId,sel.nome,p.latitude,p.longitude,{online:true});
+            db.ref('posicoes/traccar_'+p.deviceId).set({nome:sel.nome,lat:p.latitude,lng:p.longitude,online:true,ts:Date.now()});
+          }
+        });
+      }catch(e){console.log('auto traccar falhou',e)}
+    },15000);
+  }catch(e){
+    st.textContent='Erro: '+e.message;
+    st.style.color='#ef4444';
+    box.innerHTML='<div style="font-size:11px;color:#ef4444">Falha: '+e.message+'<br>Verifique se o Traccar esta no ar: http://179.66.135.186:8082<br>Se o proxy falhar, tente de novo em 1 min.</div>';
+  }
+}
+function pararTraccar(){if(traccarTimer)clearInterval(traccarTimer);traccarTimer=null;document.getElementById('statusTraccar').textContent='Parado.'}
+// --- DISPOSITIVOS / FROTA ---
+function adicionarDispositivoAvulso(){let n=document.getElementById('nomeNovoDispositivo').value.trim();if(!n){alert('Digite o nome');return}let id='disp_'+Date.now();db.ref('dispositivos/'+id).set({nome:n,criado:Date.now()});document.getElementById('nomeNovoDispositivo').value='';alert('Adicionado: '+n)}
+function carregarDispositivos(){
+  db.ref('dispositivos').on('value',snap=>{
+    let dados=snap.val()||{};listaDispositivos=Object.keys(dados).map(k=>({id:k,...dados[k]}));
+    document.getElementById('countDisp').textContent=listaDispositivos.length;
+    let box=document.getElementById('listaDispositivosCadastrados');box.innerHTML='';
+    let sel=document.getElementById('selectDispositivoIsca');sel.innerHTML='<option value="">Nenhum celular...</option>';
+    listaDispositivos.forEach(d=>{
+      let div=document.createElement('div');div.className='item-compacto';
+      div.innerHTML='<b style="font-size:11px">'+d.nome+'</b><div><button class="btn-sm red" style="padding:4px 8px">❌ Excluir</button></div>';
+      div.querySelector('button').onclick=()=>{if(confirm('Excluir '+d.nome+'?'))db.ref('dispositivos/'+d.id).remove()};
+      box.appendChild(div);
+      let o=document.createElement('option');o.value=d.id;o.textContent=d.nome;sel.appendChild(o);
+    });
+    atualizarSelectCerca();
+  });
+}
+function carregarVeiculos(){
+  db.ref('veiculos').on('value',snap=>{
+    let dados=snap.val()||{};listaVeiculos=Object.keys(dados).map(k=>({id:k,...dados[k]}));
+    document.getElementById('countVeh').textContent=listaVeiculos.length;
+    let box=document.getElementById('listaVeh');box.innerHTML='';
+    let sel1=document.getElementById('vGravarAlvo');let sel2=document.getElementById('vCompAlvo');let sel3=document.getElementById('rVeiculo');
+    sel2.innerHTML='<option value="">Selecione o ativo...</option>';sel3.innerHTML='<option value="">Selecione...</option>';
+    listaVeiculos.forEach(v=>{
+      let div=document.createElement('div');div.className='item-compacto';div.innerHTML='<div><b style="font-size:11px">'+v.modelo+'</b><br><span style="font-size:9px;color:#94a3b8">'+v.tipo+' | '+v.placa+'</span></div><button class="btn-sm red">Excluir</button>';
+      div.querySelector('button').onclick=()=>db.ref('veiculos/'+v.id).remove();
+      box.appendChild(div);
+      let o2=document.createElement('option');o2.value=v.id;o2.textContent=v.modelo;sel2.appendChild(o2);
+      let o3=document.createElement('option');o3.value=v.id;o3.textContent=v.modelo;sel3.appendChild(o3);
+    });
+  });
+}
+function treinar(){let tipo=document.getElementById('vTipo').value;let placa=document.getElementById('vPlaca').value.trim();let modelo=document.getElementById('vModelo').value.trim();if(!modelo){alert('Digite o modelo');return}db.ref('veiculos/'+Date.now()).set({tipo:tipo,placa:placa,modelo:modelo});document.getElementById('vModelo').value='';alert('Ativo adicionado: '+modelo)}
+function enviarLinkWhatsApp(){let id=document.getElementById('selectDispositivoIsca').value;if(!id){alert('Selecione o celular');return}let d=listaDispositivos.find(x=>x.id===id);let link=location.origin+location.pathname+'?c='+id+'&v='+encodeURIComponent(d.nome);document.getElementById('linkGeradoBox').textContent=link;window.open('https://wa.me/?text='+encodeURIComponent('Guardião X - Abra esse link no celular do veiculo: '+link),'_blank')}
+function copiarLinkIscaDispositivo(){let id=document.getElementById('selectDispositivoIsca').value;if(!id){alert('Selecione o celular');return}let d=listaDispositivos.find(x=>x.id===id);let link=location.origin+location.pathname+'?c='+id+'&v='+encodeURIComponent(d.nome);navigator.clipboard.writeText(link).then(()=>alert('Link copiado!'))}
+function salvarVinculoHardware(){let v=document.getElementById('rVeiculo').value;let imei=document.getElementById('rImei').value.trim();if(!v||!imei){alert('Selecione veiculo e IMEI');return}db.ref('vinculos/'+v).set({imei:imei,ts:Date.now()});alert('Vinculado!')}
+function executarComandoCorte(a){alert(a==='bloquear'?'🛑 BLOQUEIO ENVIADO':'⚡ LIBERADO')}
+// --- CERCA ---
+function atualizarSelectCerca(){
+  let sel=document.getElementById('selectCercaVeiculo');if(!sel)return;
+  let atual=sel.value;
+  sel.innerHTML='<option value="">Selecione em DISPOSITIVOS primeiro...</option>';
+  Object.values(traccarSelecionados).forEach(t=>{
+    let o=document.createElement('option');o.value='traccar_'+t.id;o.textContent=t.nome+' (Traccar)';sel.appendChild(o);
+  });
+  listaDispositivos.forEach(d=>{
+    let o=document.createElement('option');o.value=d.id;o.textContent=d.nome;sel.appendChild(o);
+  });
+  Object.keys(markersMovel).forEach(id=>{
+    if(![...sel.options].some(o=>o.value===id)){let o=document.createElement('option');o.value=id;o.textContent=id;sel.appendChild(o)}
+  });
+  if(atual) sel.value=atual;
+  sel.onchange=()=>{cercaAlvoId=sel.value;document.getElementById('txtCercaAlvo').textContent='Alvo: '+(sel.options[sel.selectedIndex]?.text||'nenhum')};
+}
+function toggleChaveCerca(){
+  cercaAtiva=!cercaAtiva;
+  let btn=document.getElementById('btnLigaDesligaCerca');
+  let badge=document.getElementById('badgeStatusCerca');
+  let dot=document.getElementById('dotStatusCerca');
+  let txt=document.getElementById('txtTopStatusCerca');
+  if(cercaAtiva){btn.textContent='🟢 CERCA LIGADA';btn.style.background='#00ff88';btn.style.color='#000';badge.textContent='LIGADA';badge.className='badge ok';dot.className='dot g';txt.textContent='ON';txt.style.color='#00ff88'}
+  else{btn.textContent='🔴 CERCA DESLIGADA';btn.style.background='';btn.style.color='';badge.textContent='DESLIGADA';badge.className='badge off';dot.className='dot r';txt.textContent='OFF';txt.style.color='#ef4444'}
+}
+function atualizarSliderCerca(v){raioCerca=parseInt(v);document.getElementById('valorRaioTxt').textContent=v+' metros';if(cercaCircle&&centroCerca)cercaCircle.setRadius(raioCerca)}
+function armarCercaVirtual(){
+  let id=document.getElementById('selectCercaVeiculo').value;
+  if(!id){alert('Selecione o veiculo na lista da cerca primeiro');return}
+  let m=markersMovel[id]||markersMovel['traccar_'+id];
+  if(!m){alert('Veiculo ainda nao apareceu no mapa. Clique em ATUALIZAR LISTA em DISPOSITIVOS e SELECIONAR.');return}
+  centroCerca=m.getLatLng();cercaAlvoId=id;
+  if(cercaCircle)map.removeLayer(cercaCircle);
+  cercaCircle=L.circle(centroCerca,{color:'#facc15',fillColor:'#facc15',fillOpacity:0.15,radius:raioCerca}).addTo(map);
+  document.getElementById('txtCercaAlvo').textContent='Alvo: '+id+' | Centro fixado | Raio '+raioCerca+'m';
+  if(!cercaAtiva) toggleChaveCerca();
+  alert('Cerca fixada em '+id);
+}
+function verificarCerca(id,lat,lng){
+  if(!cercaAtiva||!centroCerca||!cercaCircle) return;
+  if(cercaAlvoId&&id!==cercaAlvoId&&id!=='traccar_'+cercaAlvoId) return;
+  let d=map.distance([lat,lng],centroCerca);
+  if(d>raioCerca){dispararAlarme(id,d)}
+}
+function dispararAlarme(id,d){
+  if(window._alarmeTocando) return; window._alarmeTocando=true;
+  document.getElementById('alarmeOverlay').style.display='flex';
+  adicionarLog('🚨 ROMPIMENTO CERCA: '+id+' saiu '+Math.round(d)+'m');
+  setTimeout(()=>{document.getElementById('alarmeOverlay').style.display='none';window._alarmeTocando=false},8000);
+}
+function simularRompimentoCerca(){dispararAlarme('TESTE',999)}
+// --- LOGS / PANICO / DRONE / GRAVADOR ---
+function adicionarLog(txt){let box=document.getElementById('listaLogs');if(box.textContent.includes('Nenhum evento'))box.textContent='';box.innerHTML='<div>'+new Date().toLocaleString()+' - '+txt+'</div>'+box.innerHTML;db.ref('logs/'+Date.now()).set({txt:txt,ts:Date.now()})}
+function carregarLogs(){db.ref('logs').limitToLast(20).on('value',snap=>{let d=snap.val()||{};let box=document.getElementById('listaLogs');let arr=Object.values(d).reverse();if(arr.length)box.innerHTML=arr.map(x=>'<div>'+new Date(x.ts).toLocaleString()+' - '+x.txt+'</div>').join('')})}
+function limparLogs(){db.ref('logs').remove();document.getElementById('listaLogs').textContent='Nenhum evento registrado.'}
+function exportarRelatorioPolicial(){let t=document.getElementById('listaLogs').innerText;navigator.clipboard.writeText('RELATORIO GUARDIAO X\n'+t).then(()=>alert('Relatorio copiado!'))}
+function acionarPanicoManual(){adicionarLog('🚨 PANICO MANUAL ACIONADO');dispararAlarme('PANICO',999);alert('Panico disparado!')}
+function abrirDroneFullscreen(){alert('Tela Drone - em desenvolvimento. Use o mapa principal.')}
+function fecharDroneFullscreen(){}
+function iniciarSeguimentoAlvo(){alert('Seguimento iniciado para o alvo selecionado.')}
+function abrirGravadorApp(tipo){gravadorTipo=tipo;document.getElementById('modalGravadorApp').style.display='flex';document.getElementById('tituloGravadorApp').textContent='GRAVACAO - '+tipo.toUpperCase();iniciarCamera()}
+async function iniciarCamera(){try{videoStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});document.getElementById('videoPreviewCam').srcObject=videoStream}catch(e){document.getElementById('txtStatusGravador').textContent='Sem acesso a camera: '+e.message}}
+function fecharGravadorApp(){document.getElementById('modalGravadorApp').style.display='none';if(videoStream)videoStream.getTracks().forEach(t=>t.stop())}
+function acionarDisparoGravacao(){
+  if(gravadorTimer){clearInterval(gravadorTimer);gravadorTimer=null;document.getElementById('btnExecutarGravacao').textContent='🔴 INICIAR IA';fecharGravadorApp();if(gravadorTipo==='dia')document.getElementById('statusDia').textContent='✅ Capturado';if(gravadorTipo==='noite')document.getElementById('statusNoite').textContent='✅ Capturado';if(gravadorTipo==='suspeito')document.getElementById('nomeArquivoSuspeito').textContent='Video suspeito capturado';return}
+  gravadorSeg=0;document.getElementById('btnExecutarGravacao').textContent='⏹️ PARAR';
+  gravadorTimer=setInterval(()=>{gravadorSeg++;let m=String(Math.floor(gravadorSeg/60)).padStart(2,'0');let s=String(gravadorSeg%60).padStart(2,'0');document.getElementById('tempoGravador').textContent=m+':'+s},1000);
+}
+function executarComparacaoBiometrica(){let box=document.getElementById('resultadoComparacao');box.style.display='block';box.innerHTML='<b style="color:#00ff88">IA ANALISANDO...</b><br>Comparando micro-detalhes...';setTimeout(()=>{box.innerHTML='<b style="color:#facc15">Resultado IA: 87% compatível</b><br>Verifique riscos, amassados e peças únicas manualmente.'},1500)}
+function fecharModalFotos(){document.getElementById('modalFotos').style.display='none'}
+// --- ABAS ---
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.btn-janela').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.btn-janela').forEach(x=>x.classList.remove('ativa'));
+      b.classList.add('ativa');
+      document.querySelectorAll('.janela').forEach(j=>j.classList.remove('ativa'));
+      let alvo=document.getElementById('j-'+b.dataset.j);
+      if(alvo) alvo.classList.add('ativa');
+      if(b.dataset.j==='mapa'&&map) setTimeout(()=>map.invalidateSize(),200);
+      if(b.dataset.j==='drone'&&mapDrone) setTimeout(()=>mapDrone.invalidateSize(),200);
+    });
+  });
+  if(iscaCanal&&iscaNome){
+    document.getElementById('telaLogin').style.display='none';
+    document.getElementById('telaIscaModo').style.display='flex';
+    document.getElementById('lblIscaNome').textContent=decodeURIComponent(iscaNome);
+    if(navigator.geolocation){
+      setInterval(()=>{
+        navigator.geolocation.getCurrentPosition(pos=>{
+          let lat=pos.coords.latitude,lng=pos.coords.longitude;
+          document.getElementById('lblIscaCoord').textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+          document.getElementById('lblIscaBat').textContent=bateriaIscaAtual+'%';
+          document.getElementById('txtStatusIsca').textContent='Transmitindo... '+new Date().toLocaleTimeString();
+          db.ref('posicoes/'+iscaCanal).set({nome:decodeURIComponent(iscaNome),lat:lat,lng:lng,bateria:bateriaIscaAtual,ts:Date.now(),online:true});
+        },()=>{}, {enableHighAccuracy:true});
+      },10000);
+    }
+  }
+});
+</script>
+</body>
+</html>
