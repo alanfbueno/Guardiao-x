@@ -309,7 +309,17 @@ setInterval(()=>{const h=document.getElementById('hora');if(h)h.textContent=new 
 // ===== TRACCAR - V7 COM PONTE HTTPS =====
 const TRACCAR_USER = "alanfbueno@gmail.com";
 const TRACCAR_PASS = "Ramonbueno23#";
-function urlProxy(endpoint){
+const TRACCAR_BASE = "http://179.66.135.186:8082/api/";
+function getAuthTraccar(){
+  return "Basic " + btoa(TRACCAR_USER + ":" + TRACCAR_PASS);
+}
+async function fetchTraccar(endpoint){
+  let url = TRACCAR_BASE + endpoint;
+  let viaProxy = "https://corsproxy.io/?url=" + encodeURIComponent(url);
+  let r = await fetch(viaProxy, { headers: { "Authorization": getAuthTraccar() } });
+  if(!r.ok) throw new Error("proxy falhou - " + r.status);
+  return r.json();
+}
   let base = "https://179.66.135.186.nip.io/proxy.php?endpoint=" + endpoint + "&user=" + encodeURIComponent(TRACCAR_USER) + "&pass=" + encodeURIComponent(TRACCAR_PASS);
   return "https://corsproxy.io/?url=" + encodeURIComponent(base);
 }
@@ -322,7 +332,7 @@ async function carregarDispositivosTraccar() {
   const st = document.getElementById('statusTraccar');
   if(st) st.textContent = 'Buscando no Traccar...';
   try {
-    let r = await fetch(urlProxy('devices'));
+    let devices = await fetchTraccar('devices');
     if (!r.ok) throw new Error('proxy falhou - ' + r.status);
     let devices = await r.json();
     if(!Array.isArray(devices)) throw new Error('Resposta inválida do Traccar');
@@ -357,8 +367,7 @@ function toggleTraccar(id, nome) {
 async function atualizarPosicoesTraccar() {
   if (Object.keys(traccarSelecionados).length === 0) return;
   try {
-    let r = await fetch(urlProxy('positions'));
-    let pos = await r.json();
+let pos = await fetchTraccar('positions');
     pos.forEach(p => {
       if (!traccarSelecionados[p.deviceId]) return;
       let nome = traccarSelecionados[p.deviceId];
