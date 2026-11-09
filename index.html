@@ -310,8 +310,8 @@ setInterval(()=>{const h=document.getElementById('hora');if(h)h.textContent=new 
 const TRACCAR_USER = "alanfbueno@gmail.com";
 const TRACCAR_PASS = "Ramonbueno23#";
 function urlProxy(endpoint){
-  let base = "http://179.66.135.186.nip.io/proxy.php?endpoint=" + endpoint + "&user=" + encodeURIComponent(TRACCAR_USER) + "&pass=" + encodeURIComponent(TRACCAR_PASS);
-  return "https://api.allorigins.win/raw?url=" + encodeURIComponent(base);
+  let base = "https://179.66.135.186.nip.io/proxy.php?endpoint=" + endpoint + "&user=" + encodeURIComponent(TRACCAR_USER) + "&pass=" + encodeURIComponent(TRACCAR_PASS);
+  return "https://corsproxy.io/?url=" + encodeURIComponent(base);
 }
 let traccarTimer = null;
 let traccarSelecionados = {};
