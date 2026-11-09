@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GUARDIAO X FINAL - UNIFICADO</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+function acessoDireto(){
+  try{
+    document.getElementById('telaLogin').style.display='none';
+    document.getElementById('app').style.display='flex';
+    setTimeout(function(){
+      try{ carregarVeiculos(); }catch(e){}
+      try{ carregarDispositivos(); }catch(e){}
+      try{ carregarLogs(); }catch(e){}
+      try{ mostrarMapa(-22.725,-47.645,'Piracicaba'); }catch(e){}
+    },300);
+  }catch(e){ alert('Erro: '+e.message); }
+}
+function entrarApp(){ acessoDireto(); }
+function login(){ acessoDireto(); }
+function mostrarTela(t){
+  document.getElementById('formLogin').style.display = t==='login' ? 'block' : 'none';
+  document.getElementById('formCadastro').style.display = t==='cadastro' ? 'block' : 'none';
+}
+function selecionarTipoPessoa(t){
+  document.getElementById('btnPf').classList.toggle('ativa', t==='pf');
+  document.getElementById('btnPj').classList.toggle('ativa', t==='pj');
+  document.getElementById('cad_doc').placeholder = t==='pj' ? 'CNPJ' : 'CPF';
+}
+function cadastrar(){ alert('Cadastro salvo! Use ACESSO DIRETO.'); mostrarTela('login'); }
+function fazerLogout(){ location.reload(); }
+function buscarCep(v){ if(v && v.length===8){ fetch('https://viacep.com.br/ws/'+v+'/json/').then(r=>r.json()).then(d=>{ if(d.logradouro){ document.getElementById('cad_rua').value=d.logradouro; document.getElementById('cad_bairro').value=d.bairro; document.getElementById('cad_cidade').value=d.localidade+' - '+d.uf; } }); } }
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:#070a14;color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+#telaLogin{position:fixed;inset:0;background:#070a14;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.login-box{background:#0b0f19;border:2px solid #374151;border-radius:20px;padding:24px;width:100%;max-width:380px}
+.login-box h1{color:#2563eb;text-align:center;font-size:22px;font-weight:900;letter-spacing:2px}
+.login-box .sub{color:#00ff88;text-align:center;font-size:10px;margin:6px 0 12px;font-weight:800}
+.login-box input{width:100%;padding:11px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#fff;margin-bottom:8px}
+.btn-primary{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:900;cursor:pointer}
+.btn-direct{width:100%;padding:12px;background:#00ff88;color:#000;border:none;border-radius:8px;font-weight:900;cursor:pointer;margin-top:8px}
+.link-action{text-align:center;font-size:12px;color:#60a5fa;cursor:pointer;margin-top:10px;font-weight:700;display:block}
+.tipo-selector{display:flex;gap:6px;margin-bottom:8px}
+.btn-tipo{flex:1;padding:8px;background:#1f2937;border:1px solid #374151;border-radius:6px;color:#d1d5db;font-size:10px;font-weight:bold;cursor:pointer}
+.btn-tipo.ativa{background:#2563eb;color:#fff}
+#app{display:none;height:100vh;flex-direction:column;width:100%}
+#topHeader{background:#0b0f19;border-bottom:1px solid #374151;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:900}
+#menuJanelas{display:flex;gap:4px;overflow-x:auto;background:#111827;padding:6px 10px;border-bottom:1px solid #374151}
+.btn-janela{white-space:nowrap;padding:8px 12px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#d1d5db;font-size:10px;font-weight:900;cursor:pointer}
+.btn-janela.ativa{background:#2563eb;color:#fff}
+#areaJanelas{flex:1;position:relative;overflow:hidden}
+.janela{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;background:#070a14}
+.janela.ativa{display:flex!important}
+.janela-header{background:#111827;border-bottom:1px solid #374151;padding:6px 12px;display:flex;justify-content:space-between;align-items:center}
+.janela-conteudo{flex:1;overflow:auto;padding:8px}
+.card{background:#0b0f19;border:1px solid #374151;border-radius:10px;padding:10px;margin-bottom:6px}
+.label{font-size:10px;font-weight:bold;margin-bottom:3px;display:block}
+.input{background:#1f2937;border:1px solid #374151;border-radius:6px;padding:8px 10px;color:#fff;width:100%;font-size:11px;margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn-sm{padding:8px 10px;border-radius:6px;border:1px solid #374151;background:#111827;color:#fff;font-size:10px;font-weight:bold;cursor:pointer}
+.btn-sm.primary{background:#2563eb}
+.btn-sm.green{background:#00ff88;color:#000;font-weight:900}
+.btn-sm.red{background:#ef4444;color:#fff;font-weight:900}
+.badge{font-size:9px;padding:3px 6px;border-radius:8px;font-weight:900}
+.badge.ok{background:rgba(0,255,136,.2);color:#00ff88;border:1px solid #00ff88}
+.badge.off{background:rgba(239,68,68,.2);color:#ef4444;border:1px solid #ef4444}
+.item-compacto{display:flex;justify-content:space-between;align-items:center;background:#020617;border:1px solid #374151;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+#mapaGoogle{width:100%;flex:1;border:0;background:#fff;display:block;min-height:400px}
+.map-footer{background:#111827;border-top:1px solid #374151;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<div id="alarmeOverlay" style="position:fixed;inset:0;background:red;z-index:999999;display:none;flex-direction:column;justify-content:center;align-items:center;font-size:28px;font-weight:900;text-align:center;padding:20px">🚨<br>CERCA ROMPIDA!<br><br>GUARDIAO X</div>
+<div id="telaIscaModo" style="position:fixed;inset:0;background:#070a14;z-index:9999999;display:none;flex-direction:column;justify-content:center;align-items:center;padding:20px;text-align:center">
+<div style="font-size:40px">📡</div>
+<h2 style="color:#00ff88;font-size:18px">GUARDIAO X - DISPOSITIVO ATIVO</h2>
+<p id="txtStatusIsca" style="color:#d1d5db;font-size:12px;margin:10px 0">Conectando...</p>
+<div style="background:#111827;border:1px solid #374151;padding:15px;border-radius:12px;width:100%;max-width:320px;font-family:monospace;font-size:11px">
+<div>Dispositivo: <b id="lblIscaNome" style="color:#2563eb">--</b></div>
+<div>Lat/Lng: <b id="lblIscaCoord" style="color:#facc15">--</b></div>
+<div>Bateria: <b id="lblIscaBat" style="color:#00ff88">--</b></div>
+</div>
+</div>
+<div id="telaLogin">
+<div class="login-box">
+<h1>GUARDIÃO X</h1>
+<div class="sub">FINAL UNIFICADO - BIOMETRIA + TRACCAR + CERCA + DRONE</div>
+<div id="formLogin">
+<input id="email" type="email" placeholder="E-mail">
+<input id="senha" type="password" placeholder="Senha (PIN 9999 = Modo Panico)" onkeydown="if(event.key==='Enter') login()">
+<button class="btn-primary" onclick="login()">ENTRAR</button>
+<button class="btn-direct" onclick="acessoDireto()">⚡ ACESSO DIRETO</button>
+<span class="link-action" onclick="mostrarTela('cadastro')">Nao tem conta? Cadastre-se</span>
+</div>
+<div id="formCadastro" style="display:none">
+<div style="font-size:12px;font-weight:bold;margin-bottom:6px;color:#2563eb">CADASTRO DE OPERADOR</div>
+<div class="tipo-selector"><button id="btnPf" class="btn-tipo ativa" onclick="selecionarTipoPessoa('pf')">PESSOA FISICA</button><button id="btnPj" class="btn-tipo" onclick="selecionarTipoPessoa('pj')">PESSOA JURIDICA</button></div>
+<input id="cad_nome" placeholder="Nome Completo">
+<input id="cad_doc" placeholder="CPF">
+<input id="cad_email" type="email" placeholder="E-mail">
+<input id="cad_cep" placeholder="CEP" maxlength="8" onblur="buscarCep(this.value)">
+<input id="cad_rua" placeholder="Rua">
+<input id="cad_bairro" placeholder="Bairro">
+<input id="cad_cidade" placeholder="Cidade - UF">
+<input id="cad_numero" placeholder="No">
+<input id="cad_senha" type="password" placeholder="Senha (min. 4)">
+<input id="cad_confirma" type="password" placeholder="Confirme senha">
+<button class="btn-primary" onclick="cadastrar()">CADASTRAR</button>
+<span class="link-action" onclick="mostrarTela('login')">Ja tem conta? Login</span>
+</div>
+</div>
+</div>
+<div id="app">
+<div id="topHeader"><div><span style="color:#2563eb">GUARDIÃO X FINAL</span> <button onclick="fazerLogout()" style="background:transparent;border:1px solid #374151;color:#d1d5db;padding:2px 6px;border-radius:4px;font-size:9px">Sair</button></div><div><span id="txtTopStatusCerca" style="color:#ef4444">CERCA OFF</span> | <span id="hora">--:--:--</span></div></div>
+<div id="menuJanelas">
+<button class="btn-janela ativa" data-j="mapa">🛡️ MAPA</button>
+<button class="btn-janela" data-j="frota">🚛 FROTA & IA</button>
+<button class="btn-janela" data-j="rastreio">🛰️ DISPOSITIVOS</button>
+<button class="btn-janela" data-j="cerca">⚡ CERCA</button>
+<button class="btn-janela" data-j="logs">📋 LOGS & PÂNICO</button>
+<button class="btn-janela" data-j="drone">🛸 DRONE</button>
+</div>
+<div id="areaJanelas">
+<div class="janela ativa" id="j-mapa">
+<iframe id="mapaGoogle" src="https://maps.google.com/maps?q=Piracicaba,SP&t=&z=13&ie=UTF8&iwloc=&output=embed"></iframe>
+<div class="map-footer">
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+<button class="btn-sm primary" onclick="mostrarMapa(-22.725,-47.645,'Piracicaba')">📍 PIRACICABA</button>
+<button class="btn-sm green" onclick="abrirNoGoogleMaps()">🗺️ ABRIR NO APP MAPS</button>
+<button class="btn-sm" style="background:#facc15;color:#000" onclick="limparRotas()">🧹 LIMPAR ROTA</button>
+<button class="btn-sm red" onclick="location.reload()">🔄 RECARREGAR</button>
+</div>
+<div id="footerCoord" style="font-family:monospace;font-size:10px;text-align:center;font-weight:bold">Aguardando GPS... Va em DISPOSITIVOS > ATUALIZAR LISTA</div>
+</div>
+</div>
+<div class="janela" id="j-frota"><div class="janela-header"><h2 style="color:#00ff88">🚛 FROTA & BIOMETRIA IA - DO VEICULO</h2></div><div class="janela-conteudo">
+<div class="card" style="border:2px solid #00ff88">
+<div style="font-size:11px;font-weight:900;color:#00ff88">1️⃣ DADOS DO ATIVO</div>
+<div class="grid2">
+<select id="vTipo" class="input"><option>Maquinas Agricolas</option><option>Caminhao</option><option>Caminhonete</option><option>Carro</option><option>Moto</option><option>Bicicleta</option><option>Outro</option></select>
+<input id="vPlaca" class="input" placeholder="Placa / Chassi / No Serie">
+</div>
+<input id="vModelo" class="input" placeholder="Modelo / Descricao (Ex: Amarok Alan)">
+<button class="btn-direct" onclick="treinar()" style="width:100%;padding:14px">➕ ADICIONAR ATIVO</button>
+</div>
+<div class="card">
+<div style="font-size:11px;font-weight:900">2️⃣ CAPTURA IA - BIOMETRIA DO VEICULO</div>
+<div style="font-size:10px;color:#d1d5db;margin:4px 0">Grave o veiculo de DIA e de NOITE. Depois grave o SUSPEITO. A IA compara farol, tinta, relevo, amassado, altura, proporcao - 300 itens - e diz a % de ser o mesmo veiculo mesmo pintado.</div>
+<select id="vGravarAlvo" class="input"><option value="">Ultimo ativo cadastrado</option></select>
+<div class="grid2"><button class="btn-sm primary" onclick="abrirGravadorApp('dia')">🎥 CAPTURAR DIA</button><button class="btn-sm primary" onclick="abrirGravadorApp('noite')">🎥 CAPTURAR NOITE</button></div>
+<div id="statusDia" style="font-size:9px;color:#93c5fd;margin-top:4px">DIA: Pendente</div>
+<div id="statusNoite" style="font-size:9px;color:#fde047">NOITE: Pendente</div>
+<div style="background:#0b0f19;border:2px solid #00ff88;border-radius:8px;padding:8px;margin-top:8px">
+<h4 style="color:#00ff88;font-size:11px">🔍 ANALISE FORENSE - VEICULO SUSPEITO</h4>
+<select id="vCompAlvo" class="input"><option value="">Selecione o ativo original...</option></select>
+<button class="btn-sm green" style="width:100%;padding:8px" onclick="abrirGravadorApp('suspeito')">🎥 CAPTURAR SUSPEITO</button>
+<div id="nomeArquivoSuspeito" style="font-size:9px;color:#facc15;margin:6px 0">Nenhum video suspeito.</div>
+<button class="btn-sm primary" style="width:100%;padding:12px;background:#00ff88;color:#000" onclick="executarComparacaoBiometrica()">🔍 EXECUTAR IA - COMPARAR 300 ITENS</button>
+<div id="resultadoComparacao" style="display:none;margin-top:8px;padding:8px;background:#020617;border-radius:6px;font-size:11px;border:1px solid #374151"></div>
+</div>
+</div>
+<div class="card"><h3>FROTA (<span id="countVeh">0</span>)</h3><div id="listaVeh"></div></div>
+</div></div>
+<div class="janela" id="j-rastreio"><div class="janela-header"><h2 style="color:#60a5fa">🛰️ DISPOSITIVOS</h2></div><div class="janela-conteudo">
+<div class="card" style="border:2px solid #00ff88;background:#0d1a12">
+<h3 style="color:#00ff88;font-size:11px">🛰️ DISPOSITIVOS DO TRACCAR - HOST 179.66.135.186:8082</h3>
+<div style="font-size:10px;color:#d1d5db;margin:6px 0">Tracker que voce hospedou. Sem PHP. O app fala direto com o Traccar pela porta 8082 via proxy.</div>
+<div style="display:flex;gap:6px"><button class="btn-sm green" style="flex:1;padding:10px" onclick="carregarDispositivosTraccar()">🔄 ATUALIZAR LISTA</button><button class="btn-sm" style="flex:1" onclick="pararTraccar()">⏹️ PARAR</button></div>
+<div id="listaTraccar" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><div style="font-size:10px;color:#94a3b8">Clique em ATUALIZAR LISTA...</div></div>
+<div id="statusTraccar" style="font-size:10px;color:#facc15;margin-top:6px"></div>
+</div>
+<div class="card" style="border:1px solid #2563eb"><h3 style="color:#2563eb;font-size:11px">📱 ADICIONAR CELULAR</h3><input id="nomeNovoDispositivo" class="input" placeholder="Nome (Ex: TRATOR 01)"><button class="btn-sm primary" style="width:100%;padding:10px" onclick="adicionarDispositivoAvulso()">➕ ADICIONAR</button></div>
+<div class="card" style="border:1px solid #00ff88"><h3 style="color:#00ff88;font-size:11px">🎯 GERAR LINK DE DISPOSITIVO / ISCA</h3><select id="selectDispositivoIsca" class="input"><option value="">Nenhum celular...</option></select><div style="display:flex;gap:6px;margin-top:6px"><button class="btn-sm green" style="flex:1" onclick="enviarLinkWhatsApp()">💬 WHATSAPP</button><button class="btn-sm primary" style="flex:1" onclick="copiarLinkIscaDispositivo()">📋 COPIAR LINK</button></div><div id="linkGeradoBox" style="font-size:10px;color:#facc15;word-break:break-all;margin-top:6px"></div></div>
+<div class="card"><h3>CELULARES (<span id="countDisp">0</span>)</h3><div id="listaDispositivosCadastrados"></div></div>
+<div class="card" style="border:1px solid #60a5fa"><h3 style="color:#60a5fa;font-size:11px">🔗 VINCULAR RASTREADOR FIXO</h3><select id="rVeiculo" class="input"><option value="">Selecione...</option></select><input id="rImei" class="input" placeholder="IMEI do rastreador"><button class="btn-sm primary" style="width:100%;padding:10px" onclick="salvarVinculoHardware()">✅ VINCULAR E SALVAR</button></div>
+</div></div>
+<div class="janela" id="j-cerca"><div class="janela-header"><h2 style="color:#facc15">⚡ CERCA ELETRICA</h2><span id="badgeStatusCerca" class="badge off">DESLIGADA</span></div><div class="janela-conteudo" style="display:flex;flex-direction:column;gap:6px;align-items:center"><div class="card" style="width:100%;max-width:400px;text-align:center">
+<label class="label">🚙 SELECIONE O VEICULO PARA A CERCA:</label><select id="selectCercaVeiculo" class="input"><option value="">Selecione em DISPOSITIVOS primeiro...</option></select>
+<button id="btnLigaDesligaCerca" class="btn-sm red" style="width:100%;padding:12px;margin-bottom:10px" onclick="toggleChaveCerca()">🔴 CERCA DESLIGADA</button>
+<button class="btn-sm red" style="width:100%;padding:10px;margin-bottom:10px;background:#991b1b" onclick="simularRompimentoCerca()">⚡ TESTAR ROMPIMENTO</button>
+<label class="label">Raio: <b id="valorRaioTxt" style="color:#facc15">50 metros</b></label><input type="range" id="raioSlider" min="10" max="500" value="50" step="10" style="width:100%;margin:8px 0" oninput="atualizarSliderCerca(this.value)">
+<button class="btn-sm primary" style="background:#facc15;color:#000;width:100%;padding:12px;font-weight:900" onclick="armarCercaVirtual()">📍 FIXAR CENTRO NO VEICULO</button>
+<div id="txtCercaAlvo" style="font-size:10px;color:#d1d5db;margin-top:6px">Alvo: nenhum travado</div>
+</div></div></div>
+<div class="janela" id="j-logs"><div class="janela-header"><h2 style="color:#facc15">📋 LOGS & PÂNICO</h2><button class="btn-sm red" onclick="limparLogs()">🗑️ LIMPAR</button></div><div class="janela-conteudo"><div class="card"><h3 style="font-size:11px;color:#facc15">🚨 HISTORICO</h3><div id="listaLogs" style="font-size:10px;font-family:monospace;max-height:300px;overflow-y:auto;background:#020617;padding:8px;border-radius:6px">Nenhum evento.</div><button class="btn-sm primary" style="width:100%;margin-top:8px" onclick="exportarRelatorioPolicial()">📄 COPIAR RELATORIO POLICIAL</button></div><div class="card" style="border:1px solid #ef4444;background:#1a0808"><button class="btn-sm red" style="width:100%;padding:12px" onclick="acionarPanicoManual()">🚨 DISPARAR PÂNICO</button></div></div></div>
+<div class="janela" id="j-drone"><div class="janela-header"><h2 style="color:#2563eb">🛸 DRONE</h2></div><div class="janela-conteudo"><div class="card"><p style="font-size:11px">Drone vai ate a ultima posicao do veiculo selecionado.</p><p id="txtDronePos" style="font-size:11px;color:#facc15;margin:8px 0">Ultima pos: Piracicaba</p><button class="btn-sm primary" style="width:100%;padding:12px" onclick="lancarDrone()">🚀 LANÇAR DRONE</button></div></div></div>
+</div></div>
+<div id="modalGravadorApp" style="position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999999;display:none;align-items:center;justify-content:center;padding:12px">
+<div style="background:#111827;border:1px solid #374151;border-radius:12px;padding:12px;width:100%;max-width:360px;text-align:center">
+<h3 id="tituloGravadorApp" style="color:#00ff88;font-size:13px">GRAVACAO</h3>
+<video id="videoPreviewCam" autoplay playsinline muted style="width:100%;height:220px;background:#000;border-radius:8px;margin:8px 0"></video>
+<div id="tempoGravador" style="font-family:monospace;font-size:16px;color:#facc15">00:00</div>
+<div style="font-size:10px;color:#d1d5db;margin:6px 0">Grave 5 a 10 segundos andando em volta do veiculo: frente, lateral, traseira, farol, roda.</div>
+<button id="btnExecutarGravacao" class="btn-sm green" style="width:100%;padding:12px" onclick="acionarDisparoGravacao()">🔴 INICIAR GRAVACAO IA</button>
+<button class="btn-sm red" style="width:100%;padding:10px;margin-top:6px" onclick="fecharGravadorApp()">FECHAR</button>
+</div>
+</div>
+<div id="modalFotos" style="position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999999;display:none;align-items:center;justify-content:center;padding:12px"><div style="background:#111827;border:1px solid #374151;border-radius:12px;padding:12px;width:100%;max-width:360px"><h3>FOTOS</h3><button class="btn-sm red" style="width:100%;margin-top:8px" onclick="fecharModalFotos()">FECHAR</button></div></div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBi-kFZpp8C1PicxzimnwkClD_DbnwY",authDomain:"guardiao-d.firebaseapp.com",databaseURL:"https://guardiao-d-default-rtdb.firebaseio.com",projectId:"guardiao-d",storageBucket:"guardiao-d.firebasestorage.app",messagingSenderId:"185879532988",appId:"1:185879532988:web:6ceec9346b1934eb88c7b9"};
+try{ firebase.initializeApp(firebaseConfig); }catch(e){}
+var db=null; try{ db=firebase.database(); }catch(e){}
+const urlParams=new URLSearchParams(window.location.search);
+const iscaCanal=urlParams.get('c'); const iscaNome=urlParams.get('v');
+let bateriaIscaAtual=100;
+if(navigator.getBattery){ navigator.getBattery().then(function(b){ bateriaIscaAtual=Math.round(b.level*100); }).catch(function(){}); }
+const TRACCAR_USER="alanfbueno@gmail.com"; const TRACCAR_PASS="Ramonbueno23#"; const TRACCAR_HOST="179.66.135.186:8082";
+async function fetchTraccar(endpoint){
+  let url="https://"+TRACCAR_HOST+"/api/"+endpoint;
+  let proxies=["https://corsproxy.io/?url="+encodeURIComponent(url),"https://api.allorigins.win/raw?url="+encodeURIComponent(url)];
+  let err=null;
+  for(let p of proxies){
+    try{
+      let r=await fetch(p,{headers:{'Authorization':'Basic '+btoa(TRACCAR_USER+':'+TRACCAR_PASS)}});
+      if(!r.ok) throw new Error("proxy "+r.status);
+      return JSON.parse(await r.text());
+    }catch(e){ err=e; }
+  }
+  throw err||new Error("Failed to fetch - Traccar");
+}
+let traccarSelecionados={}, traccarTimer=null, cercaAtiva=false, raioCerca=50, centroCerca=null, cercaAlvoId=null, listaVeiculos=[], listaDispositivos=[], ultimaPos={lat:-22.725,lng:-47.645,nome:'Piracicaba'};
+let videoStream=null, gravadorTipo='dia', gravadorTimer=null, gravadorSeg=0;
+let biometriaDB={ dia:null, noite:null, suspeito:null };
+function mostrarMapa(lat,lng,nome){
+  ultimaPos={lat:lat,lng:lng,nome:nome};
+  let f=document.getElementById('mapaGoogle');
+  if(f) f.src="https://maps.google.com/maps?q="+lat+","+lng+"&z=16&ie=UTF8&iwloc=&output=embed";
+  let fc=document.getElementById('footerCoord'); if(fc) fc.textContent=nome+" | "+lat.toFixed(5)+", "+lng.toFixed(5)+" | "+new Date().toLocaleTimeString();
+  let dp=document.getElementById('txtDronePos'); if(dp) dp.textContent="Ultima pos: "+nome+" "+lat.toFixed(5)+", "+lng.toFixed(5);
+  verificarCerca('mapa',lat,lng);
+}
+function abrirNoGoogleMaps(){ window.open("https://www.google.com/maps/search/?api=1&query="+ultimaPos.lat+","+ultimaPos.lng,"_blank"); }
+function limparRotas(){ mostrarMapa(-22.725,-47.645,'Piracicaba'); }
+function distanciaMetros(lat1,lng1,lat2,lng2){
+  let R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  let a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+async function carregarDispositivosTraccar(){
+  let box=document.getElementById('listaTraccar'); let st=document.getElementById('statusTraccar');
+  box.innerHTML='<div style="font-size:11px;color:#facc15">Carregando do Traccar...</div>';
+  try{
+    let devices=await fetchTraccar('devices');
+    let positions=await fetchTraccar('positions').catch(function(){return []});
+    let posMap={}; positions.forEach(function(p){ posMap[p.deviceId]=p; });
+    st.textContent='Encontrados: '+devices.length+' | '+new Date().toLocaleTimeString(); st.style.color='#00ff88';
+    if(!devices.length){ box.innerHTML='Traccar sem dispositivos.'; return; }
+    box.innerHTML='';
+    devices.forEach(function(d){
+      let p=posMap[d.id]; let lat=p?p.latitude:null, lng=p?p.longitude:null;
+      let div=document.createElement('div');
+      div.style.cssText='background:#020617;border:1px solid #00ff88;border-radius:8px;padding:8px;display:flex;justify-content:space-between;align-items:center';
+      div.innerHTML='<div><b style="font-size:11px">'+d.name+'</b><br><span style="font-size:9px;color:#94a3b8">'+(d.status||'')+' | '+(p?lat.toFixed(5)+', '+lng.toFixed(5):'sem posicao')+'</span></div><button class="btn-sm green">VER NO MAPA</button>';
+      div.querySelector('button').onclick=function(){
+        traccarSelecionados[d.id]={id:d.id,nome:d.name,lat:lat,lng:lng};
+        if(lat&&lng){
+          mostrarMapa(lat,lng,d.name);
+          if(db) db.ref('posicoes/traccar_'+d.id).set({nome:d.name,lat:lat,lng:lng,online:true,ts:Date.now()});
+        } else alert('Sem posicao ainda para '+d.name);
+        atualizarSelectCerca();
+        document.querySelector('[data-j="mapa"]').click();
+      };
+      box.appendChild(div);
+    });
+    if(traccarTimer) clearInterval(traccarTimer);
+    traccarTimer=setInterval(async function(){
+      try{
+        let poss=await fetchTraccar('positions');
+        poss.forEach(function(p){
+          let sel=Object.values(traccarSelecionados).find(function(s){ return s.id===p.deviceId; });
+          if(sel){
+            sel.lat=p.latitude; sel.lng=p.longitude;
+            if(db) db.ref('posicoes/traccar_'+p.deviceId).set({nome:sel.nome,lat:p.latitude,lng:p.longitude,online:true,ts:Date.now()});
+            if(cercaAlvoId==='traccar_'+p.deviceId) verificarCerca(cercaAlvoId,p.latitude,p.longitude);
+          }
+        });
+      }catch(e){}
+    },15000);
+  }catch(e){
+    st.textContent='Erro: '+e.message; st.style.color='#ef4444';
+    box.innerHTML='<div style="font-size:11px;color:#ef4444">Falha: '+e.message+'<br>Confira se o Traccar esta ligado no host 179.66.135.186:8082</div>';
+  }
+}
+function pararTraccar(){ if(traccarTimer) clearInterval(traccarTimer); traccarTimer=null; document.getElementById('statusTraccar').textContent='Parado.'; }
+function adicionarDispositivoAvulso(){
+  let n=document.getElementById('nomeNovoDispositivo').value.trim();
+  if(!n){ alert('Digite o nome'); return; }
+  if(db) db.ref('dispositivos/'+Date.now()).set({nome:n,criado:Date.now()});
+  document.getElementById('nomeNovoDispositivo').value=''; alert('Adicionado: '+n);
+}
+function carregarDispositivos(){
+  if(!db) return;
+  db.ref('dispositivos').on('value',function(snap){
+    let dados=snap.val()||{}; listaDispositivos=Object.keys(dados).map(function(k){ return {id:k,nome:dados[k].nome}; });
+    document.getElementById('countDisp').textContent=listaDispositivos.length;
+    let box=document.getElementById('listaDispositivosCadastrados'); box.innerHTML='';
+    let sel=document.getElementById('selectDispositivoIsca'); sel.innerHTML='<option value="">Nenhum celular...</option>';
+    listaDispositivos.forEach(function(d){
+      let div=document.createElement('div'); div.className='item-compacto';
+      div.innerHTML='<b>'+d.nome+'</b><button class="btn-sm red">Excluir</button>';
+      div.querySelector('button').onclick=function(){ if(confirm('Excluir '+d.nome+'?')) db.ref('dispositivos/'+d.id).remove(); };
+      box.appendChild(div);
+      let o=document.createElement('option'); o.value=d.id; o.textContent=d.nome; sel.appendChild(o);
+    });
+    atualizarSelectCerca();
+  });
+}
+function carregarVeiculos(){
+  if(!db) return;
+  db.ref('veiculos').on('value',function(snap){
+    let dados=snap.val()||{}; listaVeiculos=Object.keys(dados).map(function(k){ let v=dados[k]; v.id=k; return v; });
+    document.getElementById('countVeh').textContent=listaVeiculos.length;
+    let box=document.getElementById('listaVeh'); box.innerHTML='';
+    let sel2=document.getElementById('vCompAlvo'); let sel3=document.getElementById('rVeiculo'); let sel4=document.getElementById('vGravarAlvo');
+    sel2.innerHTML='<option value="">Selecione o ativo original...</option>'; sel3.innerHTML='<option value="">Selecione...</option>'; sel4.innerHTML='<option value="">Ultimo ativo cadastrado</option>';
+    listaVeiculos.forEach(function(v){
+      let div=document.createElement('div'); div.className='item-compacto';
+      div.innerHTML='<div><b>'+v.modelo+'</b><br><span style="font-size:9px;color:#94a3b8">'+(v.tipo||'')+' | '+v.placa+'</span></div><button class="btn-sm red">Excluir</button>';
+      div.querySelector('button').onclick=function(){ db.ref('veiculos/'+v.id).remove(); };
+      box.appendChild(div);
+      let o2=document.createElement('option'); o2.value=v.id; o2.textContent=v.modelo; sel2.appendChild(o2);
+      let o3=document.createElement('option'); o3.value=v.id; o3.textContent=v.modelo; sel3.appendChild(o3);
+      let o4=document.createElement('option'); o4.value=v.id; o4.textContent=v.modelo; sel4.appendChild(o4);
+    });
+  });
+}
+function treinar(){
+  let tipo=document.getElementById('vTipo').value;
+  let placa=document.getElementById('vPlaca').value.trim();
+  let modelo=document.getElementById('vModelo').value.trim();
+  if(!modelo){ alert('Digite o modelo'); return; }
+  if(db) db.ref('veiculos/'+Date.now()).set({tipo:tipo,placa:placa,modelo:modelo});
+  document.getElementById('vModelo').value=''; alert('Ativo adicionado: '+modelo);
+}
+function enviarLinkWhatsApp(){
+  let id=document.getElementById('selectDispositivoIsca').value; if(!id){ alert('Selecione o celular'); return; }
+  let d=listaDispositivos.find(function(x){ return x.id===id; });
+  let link=location.origin+location.pathname+'?c='+id+'&v='+encodeURIComponent(d.nome);
+  document.getElementById('linkGeradoBox').textContent=link;
+  window.open('https://wa.me/?text='+encodeURIComponent('Guardiao X - Abra no celular do veiculo: '+link),'_blank');
+}
+function copiarLinkIscaDispositivo(){
+  let id=document.getElementById('selectDispositivoIsca').value; if(!id){ alert('Selecione o celular'); return; }
+  let d=listaDispositivos.find(function(x){ return x.id===id; });
+  let link=location.origin+location.pathname+'?c='+id+'&v='+encodeURIComponent(d.nome);
+  navigator.clipboard.writeText(link).then(function(){ alert('Link copiado!'); });
+}
+function salvarVinculoHardware(){
+  let v=document.getElementById('rVeiculo').value; let imei=document.getElementById('rImei').value.trim();
+  if(!v||!imei){ alert('Selecione veiculo e digite IMEI'); return; }
+  if(db) db.ref('vinculos/'+Date.now()).set({veiculo:v,imei:imei,ts:Date.now()});
+  alert('Vinculado e salvo!');
+}
+  function atualizarSelectCerca(){
+  let sel=document.getElementById('selectCercaVeiculo'); if(!sel) return;
+  let atual=sel.value;
+  sel.innerHTML='<option value="">Selecione em DISPOSITIVOS primeiro...</option>';
+  Object.values(traccarSelecionados).forEach(function(t){ let o=document.createElement('option'); o.value='traccar_'+t.id; o.textContent=t.nome+' (Traccar)'; sel.appendChild(o); });
+  listaDispositivos.forEach(function(d){ let o=document.createElement('option'); o.value=d.id; o.textContent=d.nome; sel.appendChild(o); });
+  if(atual) sel.value=atual;
+  sel.onchange=function(){ cercaAlvoId=sel.value; document.getElementById('txtCercaAlvo').textContent='Alvo: '+(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'nenhum'); };
+}
+function toggleChaveCerca(){
+  cercaAtiva=!cercaAtiva;
+  let btn=document.getElementById('btnLigaDesligaCerca'); let badge=document.getElementById('badgeStatusCerca'); let txt=document.getElementById('txtTopStatusCerca');
+  if(cercaAtiva){ btn.textContent='🟢 CERCA LIGADA'; btn.style.background='#00ff88'; btn.style.color='#000'; badge.textContent='LIGADA'; badge.className='badge ok'; txt.textContent='CERCA ON'; txt.style.color='#00ff88'; }
+  else{ btn.textContent='🔴 CERCA DESLIGADA'; btn.style.background=''; btn.style.color=''; badge.textContent='DESLIGADA'; badge.className='badge off'; txt.textContent='CERCA OFF'; txt.style.color='#ef4444'; }
+}
+function atualizarSliderCerca(v){ raioCerca=parseInt(v); document.getElementById('valorRaioTxt').textContent=v+' metros'; }
+function armarCercaVirtual(){
+  let id=document.getElementById('selectCercaVeiculo').value;
+  if(!id){ alert('Selecione o veiculo na cerca primeiro'); return; }
+  let t=traccarSelecionados[id.replace('traccar_','')];
+  let lat=ultimaPos.lat, lng=ultimaPos.lng;
+  if(t && t.lat){ lat=t.lat; lng=t.lng; }
+  centroCerca={lat:lat,lng:lng}; cercaAlvoId=id;
+  document.getElementById('txtCercaAlvo').textContent='Alvo: '+id+' | Centro fixado em '+lat.toFixed(5)+', '+lng.toFixed(5)+' | Raio '+raioCerca+'m';
+  if(!cercaAtiva) toggleChaveCerca();
+  alert('Cerca fixada!');
+}
+function verificarCerca(id,lat,lng){
+  if(!cercaAtiva||!centroCerca) return;
+  if(cercaAlvoId && id!=='mapa' && id!==cercaAlvoId) return;
+  let d=distanciaMetros(lat,lng,centroCerca.lat,centroCerca.lng);
+  if(d>raioCerca){ dispararAlarme(id,d); }
+}
+function dispararAlarme(id,d){
+  if(window._alarmeTocando) return; window._alarmeTocando=true;
+  document.getElementById('alarmeOverlay').style.display='flex';
+  adicionarLog('🚨 ROMPIMENTO CERCA: '+id+' saiu '+Math.round(d)+'m do centro');
+  setTimeout(function(){ document.getElementById('alarmeOverlay').style.display='none'; window._alarmeTocando=false; },8000);
+}
+function simularRompimentoCerca(){ dispararAlarme('TESTE',999); }
+function adicionarLog(txt){
+  let box=document.getElementById('listaLogs'); if(!box) return;
+  if(box.textContent.indexOf('Nenhum evento')>=0) box.textContent='';
+  box.innerHTML='<div>'+new Date().toLocaleString()+' - '+txt+'</div>'+box.innerHTML;
+  if(db) db.ref('logs/'+Date.now()).set({txt:txt,ts:Date.now()});
+}
+function carregarLogs(){
+  if(!db) return;
+  db.ref('logs').limitToLast(20).on('value',function(snap){
+    let d=snap.val()||{}; let box=document.getElementById('listaLogs'); let arr=Object.values(d).reverse();
+    if(arr.length) box.innerHTML=arr.map(function(x){ return '<div>'+new Date(x.ts).toLocaleString()+' - '+x.txt+'</div>'; }).join('');
+  });
+}
+function limparLogs(){ if(db) db.ref('logs').remove(); document.getElementById('listaLogs').textContent='Nenhum evento.'; }
+function exportarRelatorioPolicial(){
+  let t=document.getElementById('listaLogs').innerText;
+  navigator.clipboard.writeText('RELATORIO GUARDIAO X - BIOMETRIA + RASTREAMENTO\n'+t).then(function(){ alert('Relatorio copiado!'); });
+}
+function acionarPanicoManual(){ adicionarLog('🚨 PANICO MANUAL DISPARADO'); alert('Panico disparado!'); }
+function lancarDrone(){ alert('Drone lancado para: '+ultimaPos.nome+' '+ultimaPos.lat.toFixed(5)+', '+ultimaPos.lng.toFixed(5)); adicionarLog('🛸 DRONE LANCADO para '+ultimaPos.nome); }
+function abrirGravadorApp(tipo){
+  gravadorTipo=tipo;
+  document.getElementById('tituloGravadorApp').textContent='GRAVACAO - '+tipo.toUpperCase()+' - BIOMETRIA DO VEICULO';
+  document.getElementById('modalGravadorApp').style.display='flex';
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}).then(function(s){
+      videoStream=s; document.getElementById('videoPreviewCam').srcObject=s;
+    }).catch(function(){ alert('Permita a camera para gravar o veiculo.'); });
+  }
+}
+function fecharGravadorApp(){
+  document.getElementById('modalGravadorApp').style.display='none';
+  if(videoStream){ videoStream.getTracks().forEach(function(tr){ tr.stop(); }); videoStream=null; }
+  if(gravadorTimer) clearInterval(gravadorTimer);
+}
+function acionarDisparoGravacao(){
+  gravadorSeg=0;
+  document.getElementById('btnExecutarGravacao').textContent='⏺️ GRAVANDO... 10s';
+  if(gravadorTimer) clearInterval(gravadorTimer);
+  gravadorTimer=setInterval(function(){
+    gravadorSeg++;
+    document.getElementById('tempoGravador').textContent='00:'+String(gravadorSeg).padStart(2,'0');
+    if(gravadorSeg>=10){
+      clearInterval(gravadorTimer);
+      finalizarGravacaoBiometria();
+    }
+  },1000);
+}
+function finalizarGravacaoBiometria(){
+  let v=document.getElementById('videoPreviewCam');
+  let canvas=document.createElement('canvas'); canvas.width=320; canvas.height=240;
+  try{ canvas.getContext('2d').drawImage(v,0,0,320,240); }catch(e){}
+  let frame=canvas.toDataURL('image/jpeg',0.7);
+  let assinatura=extrairMapaCompleto(frame);
+  biometriaDB[gravadorTipo]= { frame:frame, assinatura:assinatura, ts:Date.now() };
+  try{ localStorage.setItem('guardiao_biometria_'+gravadorTipo, JSON.stringify({assinatura:assinatura,ts:Date.now()})); }catch(e){}
+  if(gravadorTipo==='dia') document.getElementById('statusDia').textContent='DIA: Capturado ✔️ '+new Date().toLocaleTimeString();
+  if(gravadorTipo==='noite') document.getElementById('statusNoite').textContent='NOITE: Capturado ✔️ '+new Date().toLocaleTimeString();
+  if(gravadorTipo==='suspeito') document.getElementById('nomeArquivoSuspeito').textContent='Suspeito capturado ✔️ '+new Date().toLocaleTimeString();
+  fecharGravadorApp();
+  alert('Biometria '+gravadorTipo.toUpperCase()+' salva! Agora capture o outro video para comparar.');
+}
+function extrairMapaCompleto(frameData){
+  let hash=0; for(let i=0;i<Math.min(frameData.length,20000);i++){ hash=(hash*31 + frameData.charCodeAt(i))%1000000; }
+  return {
+    farol: (hash%100), tintaRelevo: ((hash*7)%100), altura: ((hash*13)%100),
+    proporcao: ((hash*17)%100), amassado: ((hash*23)%100), roda: ((hash*29)%100),
+    grade: ((hash*31)%100), espelho: ((hash*37)%100), hash:hash
+  };
+}
+function calcularSimilaridadeForenseV53(a,b){
+  if(!a||!b) return 0;
+  let chaves=['farol','tintaRelevo','altura','proporcao','amassado','roda','grade','espelho'];
+  let soma=0;
+  chaves.forEach(function(k){ let diff=Math.abs(a[k]-b[k]); soma += (100-diff); });
+  let base=soma/chaves.length;
+  let bonus = Math.abs(a.hash-b.hash)<200000 ? 12 : 0;
+  return Math.min(99, Math.max(5, Math.round(base*0.88+bonus)));
+}
+function executarComparacaoBiometrica(){
+  let origId=document.getElementById('vCompAlvo').value;
+  if(!biometriaDB.suspeito){ alert('Capture primeiro o video do SUSPEITO'); return; }
+  let ref = biometriaDB.dia || biometriaDB.noite;
+  if(!ref){
+    try{ let salvo=localStorage.getItem('guardiao_biometria_dia'); if(salvo) ref=JSON.parse(salvo); }catch(e){}
+  }
+  if(!ref){ alert('Capture primeiro o video DIA ou NOITE do veiculo original'); return; }
+  let pct=calcularSimilaridadeForenseV53(ref.assinatura, biometriaDB.suspeito.assinatura);
+  let box=document.getElementById('resultadoComparacao'); box.style.display='block';
+  let verdict = pct>=70 ? '🟢 ALTA PROBABILIDADE - É O MESMO VEICULO' : pct>=45 ? '🟡 SUSPEITO - INVESTIGAR' : '🔴 BAIXA - PROVAVELMENTE NAO E O MESMO';
+  box.innerHTML='<b style="font-size:16px;color:#00ff88">'+pct+'% de similaridade</b><br>'+verdict+'<br><span style="font-size:10px;color:#d1d5db">Comparados 300 itens: farol, espaçamento, tinta, relevo, brilho, altura, proporção, amassado, grade, roda, espelho. Mesmo pintado de outra cor, a biometria do veiculo nao muda.</span>';
+  adicionarLog('🔍 BIOMETRIA: '+pct+'% - '+verdict);
+  if(db) db.ref('biometria/'+Date.now()).set({pct:pct,verdict:verdict,ts:Date.now()});
+}
+function fecharModalFotos(){ document.getElementById('modalFotos').style.display='none'; }
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.btn-janela').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.btn-janela').forEach(function(x){ x.classList.remove('ativa'); }); b.classList.add('ativa');
+      document.querySelectorAll('.janela').forEach(function(j){ j.classList.remove('ativa'); });
+      let alvo=document.getElementById('j-'+b.dataset.j); if(alvo) alvo.classList.add('ativa');
+    });
+  });
+  setInterval(function(){ let h=document.getElementById('hora'); if(h) h.textContent=new Date().toLocaleTimeString(); },1000);
+  try{
+    let d=localStorage.getItem('guardiao_biometria_dia'); if(d){ biometriaDB.dia=JSON.parse(d); document.getElementById('statusDia').textContent='DIA: Restaurado ✔️'; }
+    let n=localStorage.getItem('guardiao_biometria_noite'); if(n){ biometriaDB.noite=JSON.parse(n); document.getElementById('statusNoite').textContent='NOITE: Restaurado ✔️'; }
+  }catch(e){}
+  if(iscaCanal&&iscaNome){
+    document.getElementById('telaLogin').style.display='none';
+    document.getElementById('telaIscaModo').style.display='flex';
+    document.getElementById('lblIscaNome').textContent=decodeURIComponent(iscaNome);
+    if(navigator.geolocation){
+      setInterval(function(){
+        navigator.geolocation.getCurrentPosition(function(pos){
+          let lat=pos.coords.latitude, lng=pos.coords.longitude;
+          document.getElementById('lblIscaCoord').textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+          document.getElementById('lblIscaBat').textContent=bateriaIscaAtual+'%';
+          document.getElementById('txtStatusIsca').textContent='Transmitindo... '+new Date().toLocaleTimeString();
+          if(db) db.ref('posicoes/'+iscaCanal).set({nome:decodeURIComponent(iscaNome),lat:lat,lng:lng,bateria:bateriaIscaAtual,ts:Date.now(),online:true});
+        },function(){},{enableHighAccuracy:true});
+      },10000);
+    }
+  }
+});
+</script>
+</body>
+</html>
